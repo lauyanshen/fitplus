@@ -1,0 +1,10 @@
+{
+  "id": "/", "name": "Fit+ — Daily Health Tracker", "short_name": "Fit+",
+  "description": "Track meals, exercise and daily health habits.",
+  "start_url": "/", "scope": "/", "display": "standalone",
+  "background_color": "#f4f7f5", "theme_color": "#153f2d",
+  "icons": [
+    { "src": "/app-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/app-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

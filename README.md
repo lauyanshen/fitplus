@@ -47,4 +47,3 @@ After a successful initial load, the public app shell and images are cached for 
 - Original project overview: [docs/PROJECT.md](docs/PROJECT.md).
 
 The original Sites build files are retained separately from the static build. Updating this GitHub repository deploys the frontend only; changing the protected AI endpoint or connection page also requires publishing the original Sites app.
-
