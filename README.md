@@ -1,6 +1,6 @@
 # Fit+
 
-A personal health companion for meals, sugar awareness, movement, water, wellbeing and progress. The existing Fit+ interface, calculations and three languages are retained.
+A personal health companion for BMI screening, AI food-photo calorie estimation, sugar awareness, automatic exercise-calorie estimates, water, wellbeing and daily progress. Fit+ supports English, Bahasa Melayu and Simplified Chinese.
 
 **GitHub app:** https://lauyanshen.github.io/fitplus/
 
@@ -38,7 +38,7 @@ After a successful initial load, the public app shell and images are cached for 
 
 ## Source layout
 
-- `app/page.tsx`: shared Fit+ interface and tracking logic.
+- `app/page.tsx`: shared Fit+ interface, photo-meal workflow, exercise estimation and tracking logic.
 - `app/api/ai/route.ts`: existing server-only OpenAI endpoint.
 - `app/ai-connect`: authenticated connection page deployed on the original Sites service.
 - `lib/fit-ai-client.ts`: same-origin API on Sites; authenticated connection from GitHub Pages.

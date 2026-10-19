@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 const NORMAL_MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
-const PREMIUM_MODEL = process.env.OPENAI_PREMIUM_MODEL || "gpt-4.1";
 const foodItemSchema = {
   type: "object",
   additionalProperties: false,
@@ -89,15 +88,12 @@ export async function POST(req: NextRequest) {
           : body?.language === "zh"
             ? "Simplified Chinese"
             : "English";
-    if (kind !== "calories" && kind !== "assistant")
+    if (kind !== "calories" && kind !== "food_photo" && kind !== "assistant")
       return NextResponse.json({ error: "Invalid request." }, { status: 400 });
-    if (kind === "assistant" && body?.plan === "plus")
-      return NextResponse.json({ error: "Plus+ requires a verified paid subscription. Checkout is not connected yet. Please use Normal." }, { status: 402 });
     let instructions = "",
-      input = "",
+      input: unknown = "",
       schema = foodSchema,
       schemaName = "food_estimate";
-    const assistantPlan = body?.plan === "plus" ? "plus" : "normal";
     if (kind === "calories") {
       const food = String(body.food || "")
         .trim()
@@ -109,6 +105,23 @@ export async function POST(req: NextRequest) {
         );
       instructions = `You are Fit+, a cautious nutrition estimator. Treat every separate line or clearly listed food as an individual item and return one result for each, in the same order. Never combine different foods. Use typical Malaysian or international portions. Estimate calories, macros, total sugar and added/free sugar in grams; addedSugar must not exceed totalSugar. Classify food groups and overall balance based on portion, fibre, vegetables, protein, processing, saturated fat, sodium and added sugar. 'often' means generally suitable regularly, 'sometimes' means portion/context matters, and 'limit' means high added sugar, sodium, saturated fat or heavily processed. Do not moralise food or diagnose health. If details are unclear, assume one serving and lower confidence. Keep note and balanceNote below 20 words each. Return no more than 12 items. Write the food name, portion, note and balanceNote in ${language}; keep required enum values unchanged.`;
       input = food;
+    } else if (kind === "food_photo") {
+      const image = String(body.image || "");
+      if (!/^data:image\/(jpeg|jpg|png|webp);base64,/.test(image) || image.length > 4_500_000)
+        return NextResponse.json(
+          { error: "Choose a clear JPG, PNG or WebP food photo under 4 MB." },
+          { status: 400 },
+        );
+      instructions = `You are Fit+, a cautious food-photo nutrition estimator. Identify each visible food or drink as a separate item. Estimate realistic portions, calories, macros, total sugar and added/free sugar; addedSugar must not exceed totalSugar. Use visual evidence only and do not invent hidden ingredients. Classify food groups and balance. If the meal or portion is unclear, use low confidence and explain briefly. Do not diagnose or moralise. Return no more than 12 items. Keep note and balanceNote below 20 words each. Write food names, portions, notes and balanceNote in ${language}; keep required enum values unchanged.`;
+      input = [
+        {
+          role: "user",
+          content: [
+            { type: "input_text", text: "Identify and estimate every visible food and drink in this photo." },
+            { type: "input_image", image_url: image, detail: "low" },
+          ],
+        },
+      ];
     } else {
       const question = String(body.question || "")
         .trim()
@@ -120,7 +133,7 @@ export async function POST(req: NextRequest) {
         );
       schema = answerSchema;
       schemaName = "health_guidance";
-      instructions = `You are Fit+, a fast, supportive wellness assistant. Answer directly using the supplied context and age. Under 20: no adult BMI labels, calorie deficits, weight-loss targets or dieting; suggest balanced family meals, sleep, enjoyable activity and parent/paediatric guidance. Age 65+: prioritise strength, balance, hydration, nourishment and gradual change; flag unintentional weight loss. Age 20–64: support gradual sustainable goals. Never diagnose or recommend extreme restriction, purging, supplements, medicines or treatment changes. For urgent symptoms, self-harm, eating-disorder signs, pregnancy or serious concerns, advise professional care. ${assistantPlan === "plus" ? "Give a thoughtful personalized answer with 4–7 practical points in no more than 350 words." : "Give 2–4 practical points in no more than 100 words."} Reply only in ${language}.`;
+      instructions = `You are Fit+, a fast, supportive wellness assistant. Answer directly using the supplied context and age. Under 20: no adult BMI labels, calorie deficits, weight-loss targets or dieting; suggest balanced family meals, sleep, enjoyable activity and parent/paediatric guidance. Age 65+: prioritise strength, balance, hydration, nourishment and gradual change; flag unintentional weight loss. Age 20–64: support gradual sustainable goals. Never diagnose or recommend extreme restriction, purging, supplements, medicines or treatment changes. For urgent symptoms, self-harm, eating-disorder signs, pregnancy or serious concerns, advise professional care. Give 2–4 practical points in no more than 100 words. Reply only in ${language}.`;
       input = JSON.stringify({ question, context: body.context || {} });
     }
     const response = await fetch("https://api.openai.com/v1/responses", {
@@ -130,7 +143,7 @@ export async function POST(req: NextRequest) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: kind === "assistant" && assistantPlan === "plus" ? PREMIUM_MODEL : NORMAL_MODEL,
+        model: NORMAL_MODEL,
         instructions,
         input,
         text: {
@@ -143,7 +156,7 @@ export async function POST(req: NextRequest) {
         },
         // Each food carries macros, sugars, groups, and guidance. Twelve foods
         // cannot reliably fit in the previous 1,200-token response budget.
-        max_output_tokens: kind === "calories" ? 9000 : assistantPlan === "plus" ? 1400 : 500,
+        max_output_tokens: kind === "calories" || kind === "food_photo" ? 9000 : 500,
       }),
     });
     const raw = await response.text();
