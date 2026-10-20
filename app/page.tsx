@@ -2015,7 +2015,7 @@ function Progress({ store, target, language }: { store: Store; target: number; l
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
-    const date = d.toISOString().slice(0, 10);
+    // Keep weekly records aligned with the local calendar.\n    const date = dayKey(d);
     return {
       date,
       label: d.toLocaleDateString(language === "zh" ? "zh-CN" : language === "ms" ? "ms-MY" : "en", { weekday: "short" }),
