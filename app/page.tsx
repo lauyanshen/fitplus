@@ -829,13 +829,6 @@ export default function Home() {
               </button>
             ))}
           </nav>
-          <div className="overflow-hidden rounded-[24px] border border-[#d7e7df] bg-[#eaf6f0] p-5 text-[#153f2d] shadow-lg shadow-[#123d2b]/5">
-            <div className="flex items-center gap-2 text-[#176044]"><Bot size={19} /><strong>{tr(language,"normalAssistant")}</strong></div>
-            <p className="mt-3 text-lg font-extrabold leading-tight">{tr(language,"aiCoach")}</p>
-            <p className="mt-2 text-xs leading-5 text-[#557166]">{tr(language,"useDailyContext")}</p>
-            <div className="mt-3 inline-flex rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-[#176044]">{tr(language,"normalDaily")}</div>
-            <button onClick={() => setActive("Assistant")} className="mt-4 w-full rounded-xl bg-[#176044] px-3 py-2.5 text-sm font-extrabold text-white transition hover:bg-[#0f4c35]">{tr(language,"askAssistant")}</button>
-          </div>
         </aside>
         <section className="min-w-0 space-y-5">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
