@@ -813,10 +813,10 @@ export default function Home() {
       />
     );
   return (
-    <main className="min-h-screen bg-[#f7faf8] pb-[calc(5.25rem+env(safe-area-inset-bottom))] text-[#11231b] lg:pb-0">
+    <main className="fit-app min-h-screen overflow-x-clip bg-[#f7faf8] pb-[calc(5.25rem+env(safe-area-inset-bottom))] text-[#11231b] lg:pb-0">
       <Header name={p.name} language={language} setLanguage={setLanguage} />
-      <div className="mx-auto grid max-w-[1480px] gap-5 px-3 py-4 sm:px-4 sm:py-5 lg:grid-cols-[210px_1fr] lg:gap-6 lg:px-7">
-        <aside className="hidden lg:flex lg:min-h-[calc(100vh-118px)] lg:flex-col lg:justify-between">
+      <div className="mx-auto grid w-full max-w-[1480px] items-start gap-5 px-4 py-4 sm:px-5 sm:py-5 lg:grid-cols-[210px_minmax(0,1fr)] lg:gap-6 lg:px-7">
+        <aside className="hidden lg:sticky lg:top-[92px] lg:flex lg:min-h-[calc(100vh-118px)] lg:flex-col lg:justify-between">
           <nav className="space-y-1.5">
             {nav.map(({ n, i: Icon }) => (
               <button
@@ -830,17 +830,17 @@ export default function Home() {
             ))}
           </nav>
         </aside>
-        <section className="min-w-0 space-y-5">
-          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-            <div>
-              <h1 className="text-[27px] font-extrabold tracking-[-.03em] sm:text-[32px]">
+        <section className="mx-auto w-full min-w-0 max-w-[1220px] space-y-5">
+          <div className="flex w-full flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <div className="min-w-0">
+              <h1 className="break-words text-[27px] font-extrabold leading-tight tracking-[-.03em] sm:text-[32px]">
                 {active === "Overview"
                   ? `${tr(language, "hello")}${p.name ? `, ${p.name}` : ""}`
                   : tr(language, active)}
               </h1>
               {active === "Overview" && <p className="mt-1 text-sm font-medium text-[#708078]">{tr(language,"smallChoices")}</p>}
             </div>
-            <label className="flex w-full items-center gap-2 rounded-xl border border-[#dce5df] bg-white px-3 py-2.5 text-sm font-semibold sm:w-auto sm:py-2">
+            <label className="flex w-full shrink-0 items-center gap-2 rounded-xl border border-[#dce5df] bg-white px-3 py-2.5 text-sm font-semibold sm:w-auto sm:py-2">
               <CalendarDays size={17} />
               <input
                 type="date"
@@ -1228,7 +1228,7 @@ function CoachOverview(props: Parameters<typeof Overview>[0] & { language: Langu
     { title: activeMinutes ? `${activeMinutes} ${tr(language,"activeMinutes")}` : tr(language,"moveBody"), detail: tr(language,activeMinutes >= activityTarget ? "movementComplete" : "movementCounts"), action: tr(language,activeMinutes ? "viewActivity" : "addExercise"), target: "Exercise", image: fitAsset("/assets/fitplus/running-shoes.webp"), done: activeMinutes >= activityTarget },
     { title: tr(language,checkIn ? "wellbeingDone" : "wellbeingCheck"), detail: checkIn ? `${tr(language,"mood")}: ${tr(language,checkIn.mood)}, ${tr(language,"energy")}: ${checkIn.energy}/5.` : tr(language,"logMoodEnergy"), action: tr(language,checkIn ? "update" : "logMood"), target: "checkin", image: fitAsset("/assets/fitplus/wellbeing-plant.webp"), done: !!checkIn },
   ];
-  return <div className="space-y-4">
+  return <div className="w-full min-w-0 space-y-4">
     <QuickStartGuide mealLogged={mealLogged} activeMinutes={activeMinutes} checkIn={checkIn} assistantUsed={assistantUsed} go={go} language={language} />
     <HealthStatusNotice bmi={bmi} category={category} teen={teen} go={go} language={language} />
     <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.62fr)_minmax(300px,.78fr)]">
@@ -1629,7 +1629,7 @@ function Meals({
 }) {
   const total = estimates.reduce((sum, item) => sum + item.calories, 0);
   return (
-    <div className="grid gap-5 xl:grid-cols-[.9fr_1.1fr]">
+    <div className="grid w-full min-w-0 gap-5 xl:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)]">
       <article className="rounded-[28px] border border-[#dfe7e2] bg-white p-6">
         <div
           className={`mb-5 rounded-2xl p-4 ${addedSugar >= sugarLimit ? "bg-red-50" : "bg-[#e3efe8]"}`}
@@ -1859,7 +1859,7 @@ function ExerciseView({
   remove: (id: string) => void;
 }) {
   return (
-    <div className="grid gap-5 xl:grid-cols-[.8fr_1.2fr]">
+    <div className="grid w-full min-w-0 gap-5 xl:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)]">
       <article className="rounded-[28px] border border-[#dfe7e2] bg-white p-6">
         <h2 className="text-xl font-extrabold">{tr(language,"recordExercise")}</h2>
         <div className="mt-4 grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
@@ -1940,7 +1940,7 @@ function Assistant({
   language: Language;
 }) {
   return (
-    <div className="mx-auto max-w-5xl space-y-5">
+    <div className="w-full min-w-0 space-y-5">
       <article className="rounded-[32px] bg-[#fff7e6] p-6 md:p-9">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div className="flex items-center gap-4">
@@ -2021,7 +2021,7 @@ function Progress({ store, target, language }: { store: Store; target: number; l
     };
   });
   return (
-    <>
+    <div className="w-full min-w-0 space-y-5">
       <div className="grid gap-4 sm:grid-cols-3">
         <Metric
           icon={CalendarDays}
@@ -2077,7 +2077,7 @@ function Progress({ store, target, language }: { store: Store; target: number; l
           {tr(language,"barsCalories")}
         </p>
       </article>
-    </>
+    </div>
   );
 }
 function SettingsView({
@@ -2095,7 +2095,7 @@ function SettingsView({
 }) {
   const youth = profile.age < 20;
   return (
-    <div className="grid gap-5 xl:grid-cols-[1fr_.65fr]">
+    <div className="grid w-full min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,.65fr)]">
       <article className="rounded-[28px] border border-[#dfe7e2] bg-white p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-xl font-extrabold">{tr(language,"profileGoals")}</h2>
