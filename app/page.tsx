@@ -72,7 +72,9 @@ const words: Record<Language, Record<string, string>> = {
       "Add portions when you know them. Fit+ will estimate every line separately.",
     sugarToday: "Today’s estimated sugar",
     total: "Total",
+    totalSugarLabel: "Total sugar",
     addedSugar: "Added/free sugar",
+    sugarMeaning: "Total sugar includes naturally occurring and added sugar. Added/free sugar is sugar added during preparation.",
     remaining: "remains within today’s guide.",
     sugarExceeded: "You have reached or exceeded today’s added-sugar guide.",
     combined: "Estimated combined total",
@@ -131,7 +133,9 @@ const words: Record<Language, Record<string, string>> = {
       "Nyatakan saiz hidangan jika diketahui. Fit+ akan menganggar setiap baris secara berasingan.",
     sugarToday: "Anggaran gula hari ini",
     total: "Jumlah",
+    totalSugarLabel: "Jumlah gula",
     addedSugar: "Gula tambahan/bebas",
+    sugarMeaning: "Jumlah gula merangkumi gula semula jadi dan gula tambahan. Gula tambahan/bebas ialah gula yang ditambah semasa penyediaan.",
     remaining: "lagi dalam panduan hari ini.",
     sugarExceeded:
       "Anda telah mencapai atau melebihi panduan gula tambahan hari ini.",
@@ -191,7 +195,9 @@ const words: Record<Language, Record<string, string>> = {
     foodHint: "若知道份量请一并填写。Fit+会逐行分别估算。",
     sugarToday: "今日糖分估算",
     total: "总糖",
+    totalSugarLabel: "总糖",
     addedSugar: "添加糖／游离糖",
+    sugarMeaning: "总糖包括天然糖和添加糖。添加糖／游离糖是制作食物时额外加入的糖。",
     remaining: "仍在今日建议范围内。",
     sugarExceeded: "您已达到或超过今日添加糖建议量。",
     combined: "合计估算",
@@ -1776,12 +1782,13 @@ function Meals({
                     </p>
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-2 text-center text-sm sm:grid-cols-5">
-                    <span>P {item.protein}g</span>
-                    <span>C {item.carbs}g</span>
-                    <span>F {item.fat}g</span>
-                    <span>Total sugar {item.totalSugar}g</span>
-                    <span>Added {item.addedSugar}g</span>
+                    <span className="rounded-lg bg-white/60 px-2 py-2">P {item.protein}g</span>
+                    <span className="rounded-lg bg-white/60 px-2 py-2">C {item.carbs}g</span>
+                    <span className="rounded-lg bg-white/60 px-2 py-2">F {item.fat}g</span>
+                    <span className="rounded-lg bg-white/60 px-2 py-2"><strong>{item.totalSugar}g</strong><small className="mt-0.5 block text-[10px] text-[#756f5c]">{tr(language,"totalSugarLabel")}</small></span>
+                    <span className="rounded-lg bg-[#fff0c7] px-2 py-2"><strong>{item.addedSugar}g</strong><small className="mt-0.5 block text-[10px] font-bold text-[#8a5d18]">{tr(language,"addedSugar")}</small></span>
                   </div>
+                  <p className="mt-2 text-[11px] leading-5 text-[#756f5c]">{tr(language,"sugarMeaning")}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <span
                       className={`rounded-full px-2.5 py-1 text-xs font-bold ${item.balance === "balanced" ? "bg-green-100 text-green-800" : item.balance === "partly balanced" ? "bg-amber-100 text-amber-800" : "bg-orange-100 text-orange-800"}`}
