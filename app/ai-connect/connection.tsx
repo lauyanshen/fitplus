@@ -27,7 +27,8 @@ export default function FitAIConnection() {
       }
       if (request?.type !== "fitplus:request" || typeof request.id !== "string" || !/^[a-zA-Z0-9-]{8,80}$/.test(request.id)) return;
       if (!request.payload || !["calories", "food_photo", "assistant"].includes(request.payload.kind) || active.has(request.id)) return;
-      const payloadLimit = request.payload.kind === "food_photo" ? 4_600_000 : 20_000;\n      if (active.size >= 2 || JSON.stringify(request.payload).length > payloadLimit) {
+      const payloadLimit = request.payload.kind === "food_photo" ? 4_600_000 : 20_000;
+      if (active.size >= 2 || JSON.stringify(request.payload).length > payloadLimit) {
         opener.postMessage({ type: "fitplus:response", id: request.id, status: 429, data: { error: "Please finish your current request, then try again." } }, CLIENT_ORIGIN);
         return;
       }

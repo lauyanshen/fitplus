@@ -1,7 +1,6 @@
 "use client";
 import { FormEvent, useEffect, useState } from "react";
-import { requestFitAI } from "@/lib/fit-ai-client";
-import { fitAsset } from "@/lib/fit-assets";
+import { createPresentationWeek } from "@/lib/presentation-week";
 import {
   Activity,
   Apple,
@@ -74,9 +73,10 @@ const words: Record<Language, Record<string, string>> = {
     total: "Total",
     totalSugarLabel: "Total sugar",
     addedSugar: "Added/free sugar",
-    sugarMeaning: "Total sugar includes naturally occurring and added sugar. Added/free sugar is sugar added during preparation.",
+    freeSugar: "Free sugar",
+    sugarMeaning: "This single figure uses free sugar because it already includes added sugar, plus sugar from honey, syrups and fruit juice.",
     remaining: "remains within today’s guide.",
-    sugarExceeded: "You have reached or exceeded today’s added-sugar guide.",
+    sugarExceeded: "You have reached or exceeded today’s added/free-sugar guide.",
     combined: "Estimated combined total",
     addAll: "Add all to today",
     recorded: "Meals recorded",
@@ -135,10 +135,11 @@ const words: Record<Language, Record<string, string>> = {
     total: "Jumlah",
     totalSugarLabel: "Jumlah gula",
     addedSugar: "Gula tambahan/bebas",
-    sugarMeaning: "Jumlah gula merangkumi gula semula jadi dan gula tambahan. Gula tambahan/bebas ialah gula yang ditambah semasa penyediaan.",
+    freeSugar: "Gula bebas",
+    sugarMeaning: "Angka tunggal ini menggunakan gula bebas kerana ia sudah merangkumi gula tambahan serta gula daripada madu, sirap dan jus buah.",
     remaining: "lagi dalam panduan hari ini.",
     sugarExceeded:
-      "Anda telah mencapai atau melebihi panduan gula tambahan hari ini.",
+      "Anda telah mencapai atau melebihi panduan gula tambahan/bebas hari ini.",
     combined: "Jumlah anggaran keseluruhan",
     addAll: "Tambah semua ke hari ini",
     recorded: "Makanan direkodkan",
@@ -197,9 +198,10 @@ const words: Record<Language, Record<string, string>> = {
     total: "总糖",
     totalSugarLabel: "总糖",
     addedSugar: "添加糖／游离糖",
-    sugarMeaning: "总糖包括天然糖和添加糖。添加糖／游离糖是制作食物时额外加入的糖。",
+    freeSugar: "游离糖",
+    sugarMeaning: "此单一数值采用游离糖，因为它已包含添加糖，以及蜂蜜、糖浆和果汁中的糖。",
     remaining: "仍在今日建议范围内。",
-    sugarExceeded: "您已达到或超过今日添加糖建议量。",
+    sugarExceeded: "您已达到或超过今日添加糖／游离糖建议量。",
     combined: "合计估算",
     addAll: "全部加入今日记录",
     recorded: "已记录的食物",
@@ -300,6 +302,7 @@ type Meal = {
   fat: number;
   totalSugar?: number;
   addedSugar?: number;
+  freeSugar?: number;
   foodGroups?: string[];
   balance?: "balanced" | "partly balanced" | "less balanced";
   frequency?: "often" | "sometimes" | "limit";
@@ -324,6 +327,7 @@ type Store = {
 type FoodEstimate = Omit<Meal, "id" | "date"> & {
   totalSugar: number;
   addedSugar: number;
+  freeSugar: number;
   foodGroups: string[];
   balance: "balanced" | "partly balanced" | "less balanced";
   frequency: "often" | "sometimes" | "limit";
@@ -482,6 +486,7 @@ function agePlan(p: Profile) {
   };
 }
 export default function Home() {
+  const [presentation, setPresentation] = useState(false);
   const [store, setStore] = useState<Store>(initial),
     [ready, setReady] = useState(false),
     [active, setActive] = useState("Overview"),
@@ -502,6 +507,18 @@ export default function Home() {
     [chatLoading, setChatLoading] = useState(false),
     [chatError, setChatError] = useState("");
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("presentation") === "week") {
+      const week = createPresentationWeek();
+      week.exercises = week.exercises.map((exercise) => ({
+        ...exercise,
+        calories: estimateExerciseCalories(exercise.name, exercise.minutes, week.profile.weight),
+      }));
+      setPresentation(true);
+      setStore(week);
+      setActive("Progress");
+      setReady(true);
+      return;
+    }
     try {
       const x = localStorage.getItem("fitplus-v2");
       // Restore the device-local profile after the client mounts.
@@ -527,18 +544,18 @@ export default function Home() {
     setReady(true);
   }, []);
   useEffect(() => {
-    if (ready) localStorage.setItem("fitplus-v2", JSON.stringify(store));
-  }, [store, ready]);
+    if (ready && !presentation) localStorage.setItem("fitplus-v2", JSON.stringify(store));
+  }, [store, ready, presentation]);
   useEffect(() => {
     if (ready) {
-      localStorage.setItem("fitplus-language", language);
+      if (!presentation) localStorage.setItem("fitplus-language", language);
       window.dispatchEvent(new CustomEvent("fitplus-language-change", { detail: language }));
       document.documentElement.lang = language === "zh" ? "zh-CN" : language === "ms" ? "ms" : "en";
     }
-  }, [language, ready]);
+  }, [language, ready, presentation]);
   useEffect(() => {
-    if (ready) localStorage.setItem("fitplus-assistant-usage", JSON.stringify(assistantUsage));
-  }, [assistantUsage, ready]);
+    if (ready && !presentation) localStorage.setItem("fitplus-assistant-usage", JSON.stringify(assistantUsage));
+  }, [assistantUsage, ready, presentation]);
   useEffect(() => {
     let currentDay = today();
     const startNewDay = () => {
@@ -618,6 +635,7 @@ export default function Home() {
     ),
     totalSugar = dayMeals.reduce((s, m) => s + Number(m.totalSugar || 0), 0),
     addedSugar = dayMeals.reduce((s, m) => s + Number(m.addedSugar || 0), 0),
+    freeSugar = dayMeals.reduce((s, m) => s + Number(m.freeSugar ?? m.addedSugar ?? 0), 0),
     sugarLimit = p.age < 2 ? 0 : p.age < 19 ? 25 : p.sex === "female" ? 25 : 36;
   const waterToday = store.water[date] || 0,
     checkInToday = store.checkIns?.[date],
@@ -626,7 +644,7 @@ export default function Home() {
       (dayMeals.length ? 25 : 0) +
         Math.min(30, (activeMinutes / activityTarget) * 30) +
         Math.min(20, (waterToday / 8) * 20) +
-        (dayMeals.length && addedSugar <= sugarLimit ? 15 : 0) +
+        (dayMeals.length && freeSugar <= sugarLimit ? 15 : 0) +
         (checkInToday ? 10 : 0),
     ),
     streak = currentStreak(store),
@@ -651,7 +669,7 @@ export default function Home() {
     setFoodError("");
     setEstimates([]);
     try {
-      const r = await requestFitAI({
+      const r = await fetch("/api/ai", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ kind: "calories", food: foodQuery, language }),
@@ -685,7 +703,7 @@ export default function Home() {
     setFoodError("");
     setEstimates([]);
     try {
-      const response = await requestFitAI({
+      const response = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ kind: "food_photo", image: foodPhoto, language }),
@@ -748,7 +766,7 @@ export default function Home() {
     setChatLoading(true);
     setChatError("");
     try {
-      const r = await requestFitAI({
+      const r = await fetch("/api/ai", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -822,7 +840,7 @@ export default function Home() {
     <main className="fit-app min-h-screen overflow-x-clip bg-[#f7faf8] pb-[calc(5.25rem+env(safe-area-inset-bottom))] text-[#11231b] lg:pb-0">
       <Header name={p.name} language={language} setLanguage={setLanguage} />
       <div className="mx-auto grid w-full max-w-[1480px] items-start gap-5 px-4 py-4 sm:px-5 sm:py-5 lg:grid-cols-[210px_minmax(0,1fr)] lg:gap-6 lg:px-7">
-        <aside className="hidden lg:sticky lg:top-[92px] lg:flex lg:min-h-[calc(100vh-118px)] lg:flex-col lg:justify-between">
+        <aside className="hidden lg:sticky lg:top-[92px] lg:block">
           <nav className="space-y-1.5">
             {nav.map(({ n, i: Icon }) => (
               <button
@@ -865,7 +883,7 @@ export default function Home() {
               exerciseCals={exerciseCals}
               activeMinutes={activeMinutes}
               macros={macros}
-              addedSugar={addedSugar}
+              addedSugar={freeSugar}
               totalSugar={totalSugar}
               sugarLimit={sugarLimit}
               dailyScore={dailyScore}
@@ -916,6 +934,7 @@ export default function Home() {
               meals={dayMeals}
               totalSugar={totalSugar}
               addedSugar={addedSugar}
+              freeSugar={freeSugar}
               sugarLimit={sugarLimit}
               language={language}
               remove={(id) =>
@@ -970,7 +989,7 @@ export default function Home() {
                     tr(language,"deleteConfirm"),
                   )
                 ) {
-                  localStorage.removeItem("fitplus-v2");
+                  if (!presentation) localStorage.removeItem("fitplus-v2");
                   setStore(initial);
                 }
               }}
@@ -1230,9 +1249,9 @@ function CoachOverview(props: Parameters<typeof Overview>[0] & { language: Langu
   const activityTarget = target === 0 ? 60 : 30;
   const completed = [mealLogged, activeMinutes >= activityTarget, !!checkIn].filter(Boolean).length;
   const items = [
-    { title: tr(language,mealLogged ? "mealLogged" : "logFirstMeal"), detail: tr(language,mealLogged ? "nutritionUpdated" : "nutritionGuidance"), action: tr(language,mealLogged ? "viewMeals" : "logMeal"), target: "Meals", image: fitAsset("/assets/fitplus/meal-bowl.webp"), done: mealLogged },
-    { title: activeMinutes ? `${activeMinutes} ${tr(language,"activeMinutes")}` : tr(language,"moveBody"), detail: tr(language,activeMinutes >= activityTarget ? "movementComplete" : "movementCounts"), action: tr(language,activeMinutes ? "viewActivity" : "addExercise"), target: "Exercise", image: fitAsset("/assets/fitplus/running-shoes.webp"), done: activeMinutes >= activityTarget },
-    { title: tr(language,checkIn ? "wellbeingDone" : "wellbeingCheck"), detail: checkIn ? `${tr(language,"mood")}: ${tr(language,checkIn.mood)}, ${tr(language,"energy")}: ${checkIn.energy}/5.` : tr(language,"logMoodEnergy"), action: tr(language,checkIn ? "update" : "logMood"), target: "checkin", image: fitAsset("/assets/fitplus/wellbeing-plant.webp"), done: !!checkIn },
+    { title: tr(language,mealLogged ? "mealLogged" : "logFirstMeal"), detail: tr(language,mealLogged ? "nutritionUpdated" : "nutritionGuidance"), action: tr(language,mealLogged ? "viewMeals" : "logMeal"), target: "Meals", image: "/assets/fitplus/meal-bowl.webp", done: mealLogged },
+    { title: activeMinutes ? `${activeMinutes} ${tr(language,"activeMinutes")}` : tr(language,"moveBody"), detail: tr(language,activeMinutes >= activityTarget ? "movementComplete" : "movementCounts"), action: tr(language,activeMinutes ? "viewActivity" : "addExercise"), target: "Exercise", image: "/assets/fitplus/running-shoes.webp", done: activeMinutes >= activityTarget },
+    { title: tr(language,checkIn ? "wellbeingDone" : "wellbeingCheck"), detail: checkIn ? `${tr(language,"mood")}: ${tr(language,checkIn.mood)}, ${tr(language,"energy")}: ${checkIn.energy}/5.` : tr(language,"logMoodEnergy"), action: tr(language,checkIn ? "update" : "logMood"), target: "checkin", image: "/assets/fitplus/wellbeing-plant.webp", done: !!checkIn },
   ];
   return <div className="w-full min-w-0 space-y-4">
     <QuickStartGuide mealLogged={mealLogged} activeMinutes={activeMinutes} checkIn={checkIn} assistantUsed={assistantUsed} go={go} language={language} />
@@ -1241,7 +1260,7 @@ function CoachOverview(props: Parameters<typeof Overview>[0] & { language: Langu
     <div className="space-y-4">
       {teen && <TeenMissionBoard addedSugar={addedSugar} sugarLimit={sugarLimit} activeMinutes={activeMinutes} water={water} addWater={addWater} go={go} language={language} schoolDay={schoolDay} teenFocus={teenFocus} totalSugar={totalSugar} mealLogged={mealLogged} />}
       <article className="relative min-h-[244px] overflow-hidden rounded-[22px] border border-[#dce9e2] bg-[#eaf8f0] shadow-[0_14px_40px_rgba(24,72,51,.07)] sm:rounded-[26px]">
-        <img src={fitAsset("/assets/fitplus/plus-coach.webp")} alt="Fit+ AI wellness coach" className="absolute inset-y-0 left-0 hidden h-full w-[46%] object-cover object-left sm:block" />
+        <img src="/assets/fitplus/plus-coach.webp" alt="Fit+ AI wellness coach" className="absolute inset-y-0 left-0 hidden h-full w-[46%] object-cover object-left sm:block" />
         <div className="relative ml-auto w-full p-5 sm:w-[58%] sm:p-7">
           <div className="flex items-center justify-between gap-2"><div className="flex min-w-0 flex-wrap items-center gap-2 text-sm font-extrabold text-[#19613f]"><Bot size={18}/> {tr(language,"normalAssistant")}</div><button aria-label="More coach actions" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/65 text-[#416354]"><MoreHorizontal size={20}/></button></div>
           <h2 className="mt-5 text-[1.35rem] font-black tracking-[-.02em] sm:text-2xl">{tr(language,"goodMorning")}</h2>
@@ -1511,7 +1530,7 @@ function Overview({
         />
         <Metric
           icon={Flame}
-          label="Added sugar"
+          label={tr(language, "addedSugar")}
           value={addedSugar}
           unit={`/ ${sugarLimit}g guide`}
           progress={sugarLimit ? (addedSugar / sugarLimit) * 100 : 100}
@@ -1559,7 +1578,7 @@ function Overview({
           >
             {addedSugar >= sugarLimit
               ? `Estimated added sugar has reached the ${sugarLimit}g daily guide.`
-              : `About ${Math.max(0, Math.round(sugarLimit - addedSugar))}g remains within today’s added-sugar guide.`}
+              : `About ${Math.max(0, Math.round(sugarLimit - addedSugar))}g remains within today’s added/free-sugar guide.`}
           </div>
           <button
             onClick={() => go("Meals")}
@@ -1610,6 +1629,7 @@ function Meals({
   meals,
   totalSugar,
   addedSugar,
+  freeSugar,
   sugarLimit,
   language,
   remove,
@@ -1629,6 +1649,7 @@ function Meals({
   meals: Meal[];
   totalSugar: number;
   addedSugar: number;
+  freeSugar: number;
   sugarLimit: number;
   language: Language;
   remove: (id: string) => void;
@@ -1638,36 +1659,36 @@ function Meals({
     <div className="grid w-full min-w-0 gap-5 xl:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)]">
       <article className="rounded-[28px] border border-[#dfe7e2] bg-white p-6">
         <div
-          className={`mb-5 rounded-2xl p-4 ${addedSugar >= sugarLimit ? "bg-red-50" : "bg-[#e3efe8]"}`}
+          className={`mb-5 rounded-2xl p-4 ${freeSugar >= sugarLimit ? "bg-red-50" : "bg-[#e3efe8]"}`}
         >
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-bold">{tr(language, "sugarToday")}</p>
               <p className="mt-1 text-xs text-[#65756c]">
                 {tr(language, "total")} {Math.round(totalSugar)}g ·{" "}
-                {tr(language, "addedSugar")} {Math.round(addedSugar)}g
+                {tr(language, "addedSugar")} {Math.round(freeSugar)}g
               </p>
             </div>
             <p
-              className={`text-xl font-extrabold ${addedSugar >= sugarLimit ? "text-red-700" : "text-[#17412e]"}`}
+              className={`text-xl font-extrabold ${freeSugar >= sugarLimit ? "text-red-700" : "text-[#17412e]"}`}
             >
-              {Math.round(addedSugar)} / {sugarLimit}g
+              {Math.round(freeSugar)} / {sugarLimit}g
             </p>
           </div>
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
             <div
-              className={`h-full rounded-full ${addedSugar >= sugarLimit ? "bg-red-500" : "bg-[#3c8c67]"}`}
+              className={`h-full rounded-full ${freeSugar >= sugarLimit ? "bg-red-500" : "bg-[#3c8c67]"}`}
               style={{
-                width: `${Math.min(100, sugarLimit ? (addedSugar / sugarLimit) * 100 : 100)}%`,
+                width: `${Math.min(100, sugarLimit ? (freeSugar / sugarLimit) * 100 : 100)}%`,
               }}
             />
           </div>
           <p
-            className={`mt-2 text-xs font-semibold ${addedSugar >= sugarLimit ? "text-red-700" : "text-[#536b5d]"}`}
+            className={`mt-2 text-xs font-semibold ${freeSugar >= sugarLimit ? "text-red-700" : "text-[#536b5d]"}`}
           >
-            {addedSugar >= sugarLimit
+            {freeSugar >= sugarLimit
               ? tr(language, "sugarExceeded")
-              : `${Math.max(0, Math.round(sugarLimit - addedSugar))}g ${tr(language, "remaining")}`}
+              : `${Math.max(0, Math.round(sugarLimit - freeSugar))}g ${tr(language, "remaining")}`}
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -1786,7 +1807,7 @@ function Meals({
                     <span className="rounded-lg bg-white/60 px-2 py-2">C {item.carbs}g</span>
                     <span className="rounded-lg bg-white/60 px-2 py-2">F {item.fat}g</span>
                     <span className="rounded-lg bg-white/60 px-2 py-2"><strong>{item.totalSugar}g</strong><small className="mt-0.5 block text-[10px] text-[#756f5c]">{tr(language,"totalSugarLabel")}</small></span>
-                    <span className="rounded-lg bg-[#fff0c7] px-2 py-2"><strong>{item.addedSugar}g</strong><small className="mt-0.5 block text-[10px] font-bold text-[#8a5d18]">{tr(language,"addedSugar")}</small></span>
+                    <span className="rounded-lg bg-[#ffe1a1] px-2 py-2"><strong>{item.freeSugar}g</strong><small className="mt-0.5 block text-[10px] font-bold text-[#7a4b00]">{tr(language,"addedSugar")}</small></span>
                   </div>
                   <p className="mt-2 text-[11px] leading-5 text-[#756f5c]">{tr(language,"sugarMeaning")}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -1831,7 +1852,7 @@ function Meals({
             key={m.id}
             icon={Apple}
             title={m.name}
-            detail={`${m.portion} · ${m.protein}g protein · ${Math.round(Number(m.addedSugar || 0))}g added sugar`}
+            detail={`${m.portion} · ${m.protein}g protein · ${Math.round(Number(m.freeSugar ?? m.addedSugar ?? 0))}g ${tr(language, "freeSugar").toLowerCase()}`}
             value={`${m.calories} kcal`}
             remove={() => remove(m.id)}
           />
@@ -1871,17 +1892,17 @@ function ExerciseView({
         <h2 className="text-xl font-extrabold">{tr(language,"recordExercise")}</h2>
         <div className="mt-4 grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
           {[
-            [tr(language,"briskWalk"), 20, 90],
-            [tr(language,"homeStrength"), 15, 80],
-            [tr(language,"cycling"), 30, 180],
-          ].map(([label, duration, calories]) => (
+            [tr(language,"briskWalk"), 20],
+            [tr(language,"homeStrength"), 15],
+            [tr(language,"cycling"), 30],
+          ].map(([label, duration]) => (
             <button
               key={String(label)}
               type="button"
               onClick={() => {
                 setName(String(label));
                 setMinutes(Number(duration));
-                setBurned(Number(calories));
+                setBurned(estimateExerciseCalories(String(label), Number(duration), weight));
               }}
               className="flex items-center justify-between rounded-xl bg-[#f4f7f5] px-4 py-3 text-left text-sm font-bold hover:bg-[#e3efe8]"
             >
@@ -2015,7 +2036,10 @@ function Progress({ store, target, language }: { store: Store; target: number; l
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
     d.setDate(d.getDate() - (6 - i));
-    // Keep weekly records aligned with the local calendar.\n    const date = dayKey(d);
+    // Keep progress buckets aligned with the user's local calendar. Using
+    // toISOString() here converts to UTC and can shift a record to yesterday
+    // or tomorrow for users outside UTC (including Malaysia).
+    const date = dayKey(d);
     return {
       date,
       label: d.toLocaleDateString(language === "zh" ? "zh-CN" : language === "ms" ? "ms-MY" : "en", { weekday: "short" }),

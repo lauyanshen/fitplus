@@ -12,6 +12,7 @@ const foodItemSchema = {
     fat: { type: "number" },
     totalSugar: { type: "number" },
     addedSugar: { type: "number" },
+    freeSugar: { type: "number" },
     foodGroups: {
       type: "array",
       items: {
@@ -47,6 +48,7 @@ const foodItemSchema = {
     "fat",
     "totalSugar",
     "addedSugar",
+    "freeSugar",
     "foodGroups",
     "balance",
     "frequency",
@@ -79,7 +81,9 @@ function normaliseFoodResult(result: unknown) {
     ...(result as Record<string, unknown>),
     items: (result as { items: Record<string, unknown>[] }).items.map((item) => {
       const totalSugar = number(item.totalSugar);
-      return { ...item, totalSugar, addedSugar: Math.min(totalSugar, number(item.addedSugar)) };
+      const addedSugar = Math.min(totalSugar, number(item.addedSugar));
+      const freeSugar = Math.min(totalSugar, Math.max(addedSugar, number(item.freeSugar)));
+      return { ...item, totalSugar, addedSugar, freeSugar };
     }),
   };
 }
@@ -117,7 +121,7 @@ export async function POST(req: NextRequest) {
           { error: "Describe a food and portion first." },
           { status: 400 },
         );
-      instructions = `You are Fit+, a cautious nutrition estimator. Treat every separate line or clearly listed food as an individual item and return one result for each, in the same order. Never combine different foods. Use typical Malaysian or international portions. Estimate calories, macros, total sugar and added/free sugar in grams. totalSugar includes both naturally occurring sugar and added/free sugar. addedSugar includes only sugar, syrup, honey or similar sweeteners added during cooking, processing or serving; it excludes naturally occurring sugar in intact fruit and plain milk. addedSugar must never exceed totalSugar. For a traditional mixed dish, consider typical sauces and sweetened condiments but lower confidence when the recipe is unknown. Classify food groups and overall balance based on portion, fibre, vegetables, protein, processing, saturated fat, sodium and added sugar. 'often' means generally suitable regularly, 'sometimes' means portion/context matters, and 'limit' means high added sugar, sodium, saturated fat or heavily processed. Do not moralise food or diagnose health. If details are unclear, assume one serving and lower confidence. Keep note and balanceNote below 20 words each. Return no more than 12 items. Write the food name, portion, note and balanceNote in ${language}; keep required enum values unchanged.`;
+      instructions = `You are Fit+, a cautious nutrition estimator. Treat every separate line or clearly listed food as an individual item and return one result for each, in the same order. Never combine different foods. Use typical Malaysian or international portions. Estimate calories, macros, totalSugar, addedSugar and freeSugar in grams. addedSugar is sugar added during processing, cooking or serving. freeSugar includes addedSugar plus sugars in honey, syrups, fruit juice and fruit-juice concentrates. Sugar in intact fruit and plain milk is not free sugar. Always keep addedSugar <= freeSugar <= totalSugar. The app presents freeSugar as one combined added/free-sugar figure, so never add addedSugar to freeSugar. Classify food groups and overall balance based on portion, fibre, vegetables, protein, processing, saturated fat, sodium and free sugar. 'often' means generally suitable regularly, 'sometimes' means portion/context matters, and 'limit' means high free sugar, sodium, saturated fat or heavily processed. Do not moralise food or diagnose health. If details are unclear, assume one serving and lower confidence. Keep note and balanceNote below 20 words each. Return no more than 12 items. Write the food name, portion, note and balanceNote in ${language}; keep required enum values unchanged.`;
       input = food;
     } else if (kind === "food_photo") {
       const image = String(body.image || "");
@@ -126,7 +130,7 @@ export async function POST(req: NextRequest) {
           { error: "Choose a clear JPG, PNG or WebP food photo under 4 MB." },
           { status: 400 },
         );
-      instructions = `You are Fit+, a cautious food-photo nutrition estimator. Identify each visible food or drink as a separate item. Estimate realistic portions, calories, macros, total sugar and added/free sugar. totalSugar includes naturally occurring plus added/free sugar. addedSugar includes only sweeteners added during cooking, processing or serving and must never exceed totalSugar. Use visual evidence and typical recipes for recognisable dishes, but do not claim certainty about hidden ingredients; use low confidence when the recipe is unknown. Classify food groups and balance. If the meal or portion is unclear, use low confidence and explain briefly. Do not diagnose or moralise. Return no more than 12 items. Keep note and balanceNote below 20 words each. Write food names, portions, notes and balanceNote in ${language}; keep required enum values unchanged.`;
+      instructions = `You are Fit+, a cautious food-photo nutrition estimator. Identify each visible food or drink as a separate item. Estimate realistic portions, calories, macros, totalSugar, addedSugar and freeSugar. addedSugar is sugar added during processing, cooking or serving. freeSugar includes addedSugar plus sugars in honey, syrups, fruit juice and fruit-juice concentrates. Sugar in intact fruit and plain milk is not free sugar. Always keep addedSugar <= freeSugar <= totalSugar. The app presents freeSugar as one combined added/free-sugar figure, so never add addedSugar to freeSugar. Use visual evidence only and do not invent hidden ingredients. Classify food groups and balance. If the meal or portion is unclear, use low confidence and explain briefly. Do not diagnose or moralise. Return no more than 12 items. Keep note and balanceNote below 20 words each. Write food names, portions, notes and balanceNote in ${language}; keep required enum values unchanged.`;
       input = [
         {
           role: "user",
@@ -234,8 +238,8 @@ export async function POST(req: NextRequest) {
       );
     }
     try {
-      const result = JSON.parse(text);
-      return NextResponse.json({ result: kind === "assistant" ? result : normaliseFoodResult(result) });
+      const parsed = JSON.parse(text);
+      return NextResponse.json({ result: kind === "assistant" ? parsed : normaliseFoodResult(parsed) });
     } catch {
       console.error("OpenAI output text was not valid JSON");
       return NextResponse.json(

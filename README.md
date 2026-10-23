@@ -1,49 +1,185 @@
 # Fit+
 
-A personal health companion for BMI screening, AI food-photo calorie estimation, sugar awareness, automatic exercise-calorie estimates, water, wellbeing and daily progress. Fit+ supports English, Bahasa Melayu and Simplified Chinese.
+**Fit+ is an AI-assisted health companion that helps people—especially children, teenagers, and families—understand their everyday eating, sugar intake, exercise, and healthy routines.**
 
-**GitHub app:** https://lauyanshen.github.io/fitplus/
+Instead of focusing only on weight, Fit+ turns daily health information into small, practical actions such as choosing a lower-sugar drink, recording a meal, drinking water, or completing 20 minutes of movement.
 
-**Repository:** https://github.com/lauyanshen/fitplus
+**Live app:** [fit-plus-health.eddielau.chatgpt.site](https://fit-plus-health.eddielau.chatgpt.site)
 
-## AI connection
+## Target users
 
-Food estimation and the assistant reuse the existing protected Fit+ service at https://fit-plus-health.eddielau.chatgpt.site. GitHub Pages serves the app; it cannot run the server API.
+Fit+ is designed for:
 
-When you submit an AI request, a small Fit+ connection window opens. Sign in with the same authorized ChatGPT account used for the original Fit+ app if requested, and keep that window open while the answer is generated. If sign-in interrupts the first request, finish signing in and retry. Allow pop-ups for the app. Existing Sites access permissions still apply: making the GitHub frontend public does not grant anyone access to the protected AI service.
+- Children and teenagers who are building healthier daily habits
+- Parents who want a simple way to discuss food, sugar, movement, and wellbeing with their children
+- Adults who want to track meals, exercise, water, weight goals, and progress
+- Malaysian users who need guidance for familiar local foods and drinks
+- Users who prefer English, Bahasa Melayu, or Simplified Chinese
 
-The API key remains in the original service's protected runtime settings. No API key, bypass token, session cookie or personal record is included in this repository. The connection checks both message origin and window identity and sends results only to the owner’s GitHub Pages origin.
+The app adapts its guidance according to the user's age. For users under 20, it prioritises healthy growth, balanced meals, sleep, enjoyable activity, and family support instead of adult dieting or calorie-deficit targets.
 
-## GitHub Pages deployment
+## The problem
 
-In **Settings → Pages**, set **Source** to **GitHub Actions**. The workflow **Deploy Fit+ to GitHub Pages** builds and publishes `dist/github-pages` on pushes to `main`. You can also run it manually from **Actions**.
+Many health apps are difficult to use consistently because they:
 
-## Local preview
+- Focus mainly on body weight or appearance
+- Use generic food databases that may not understand Malaysian meals
+- Make users manually search for calories and nutrition values
+- Show numbers without explaining what action the user can take next
+- Apply adult BMI categories and weight-loss advice to children
+- Separate meal, sugar, exercise, water, and progress tracking across different tools
 
-Requires Node.js 24 (or a compatible Node.js 22.13+ release).
+This can make health tracking confusing, time-consuming, or unsuitable for younger users. Hidden sugar in common drinks such as Milo, teh tarik, bubble tea, and canned drinks can also be difficult to notice.
 
-```sh
-npm ci
-npm run build:pages
-npm run preview:pages -- --host 127.0.0.1 --port 4180
+## How Fit+ solves it
+
+Fit+ combines the most useful daily health tools in one clear, mobile-friendly app:
+
+1. **Age-aware health profile** — Uses age, sex, height, weight, activity, and goals to provide appropriate guidance.
+2. **BMI and BMI-for-age guidance** — Uses adult BMI categories for adults and BMI-for-age screening for children and teenagers. Younger users are placed in a healthy-growth mode rather than an adult weight-loss programme.
+3. **AI food estimation** — Users can describe one or several foods in ordinary language. Fit+ estimates each item separately, including portion, calories, protein, carbohydrates, fat, total sugar, and added/free sugar.
+4. **Food balance guidance** — Each food is grouped and described as balanced, partly balanced, or less balanced, with practical guidance on how often it may fit into a healthy eating pattern.
+5. **Sugar awareness** — Tracks estimated total and added/free sugar, compares it with the daily guide, and shows sugar in grams and approximate teaspoons.
+6. **Meal and exercise records** — Records daily food, drinks, exercise duration, and estimated calories burned.
+7. **Daily missions** — Encourages simple actions for water, lower-sugar choices, movement, and wellbeing rather than perfection.
+8. **Progress dashboard** — Shows daily and weekly patterns, active minutes, meals, water, streaks, and goal progress.
+9. **Multilingual experience** — The interface and AI responses support English, Bahasa Melayu, and Simplified Chinese.
+10. **Works across devices** — The responsive web app is usable on phones and computers and can be installed as a Progressive Web App where supported.
+
+## How AI is used
+
+Fit+ uses the OpenAI API for two focused tasks.
+
+### 1. AI food and calorie estimator
+
+The user can enter foods naturally, for example:
+
+```text
+1 plate chicken rice
+1 cup teh tarik
+1 banana
 ```
 
-Open the printed `/fitplus/` URL. The AI bridge intentionally accepts only the production GitHub origin, not arbitrary localhost pages. Local AI tests should use mocks; do not loosen the production origin check.
+The AI returns a structured estimate for every food item:
 
-## Records and offline use
+- Portion
+- Calories
+- Protein, carbohydrates, and fat
+- Total sugar and added/free sugar
+- Food groups
+- Overall meal balance
+- Suggested eating frequency
+- Confidence level and a short explanation
 
-Profiles and records stay in browser storage. The new GitHub address has separate storage from the old Sites address, so existing records are not moved automatically. Fit+ retains its JSON backup download.
+This makes the app more useful for mixed meals and Malaysian foods that may be difficult to find in a standard calorie database.
 
-After a successful initial load, the public app shell and images are cached for offline tracking. AI needs internet and the existing sign-in. No AI replies, authenticated Sites pages or health records are placed in the service-worker cache.
+### 2. AI health assistant
 
-## Source layout
+The assistant uses the user's current context—including age, BMI or BMI-for-age category, health goal, meals, sugar intake, and exercise history—to answer questions such as:
 
-- `app/page.tsx`: shared Fit+ interface, photo-meal workflow, exercise estimation and tracking logic.
-- `app/api/ai/route.ts`: existing server-only OpenAI endpoint.
-- `app/ai-connect`: authenticated connection page deployed on the original Sites service.
-- `lib/fit-ai-client.ts`: same-origin API on Sites; authenticated connection from GitHub Pages.
-- `pages-client`, `vite.pages.config.ts`, `scripts/prepare-pages.mjs`: static frontend build and scoped offline shell.
-- `components`, `public`, `vendor`: retained UI components, images and styles.
-- Original project overview: [docs/PROJECT.md](docs/PROJECT.md).
+- “What should I eat next?”
+- “I had nasi lemak for breakfast. What could I choose for lunch?”
+- “What exercise should I do today?”
+- “Am I on track today?”
 
-The original Sites build files are retained separately from the static build. Updating this GitHub repository deploys the frontend only; changing the protected AI endpoint or connection page also requires publishing the original Sites app.
+The assistant is instructed to:
+
+- Give short, practical, age-appropriate suggestions
+- Avoid diagnosing medical conditions
+- Avoid extreme dieting, purging, medicine changes, and unsafe weight-loss advice
+- Avoid adult BMI labels and calorie-deficit targets for users under 20
+- Recommend professional help for urgent symptoms, eating-disorder warning signs, pregnancy, or serious health concerns
+- Answer in the language selected by the user
+
+The AI output uses a strict structured format so the app can display information consistently and reduce malformed responses.
+
+## Responsible health design
+
+Fit+ is an educational habit-building tool, not a medical device. Calorie, nutrient, sugar, and exercise-burn values are estimates and may vary by recipe, brand, preparation method, and portion size.
+
+BMI-for-age results are screening guidance, not a diagnosis. A child's growth should be reviewed with a parent and a qualified healthcare professional using appropriate growth charts and clinical context.
+
+## Privacy and data
+
+- Health records are stored locally in the user's browser on the current device.
+- The OpenAI API key is read from a protected server-side environment variable and is not included in browser code.
+- Only the information needed to answer an AI request is sent to the server-side AI endpoint.
+- Users can export a backup or delete their local Fit+ records.
+
+Because records are device-local, clearing browser data or changing devices can remove them unless a backup has been exported.
+
+## Main features
+
+- Responsive dashboard for phone and desktop
+- Teen-focused healthy-growth mode
+- BMI and BMI-for-age classification
+- Malaysian food and drink guidance
+- Multi-food AI calorie estimation
+- Calories, macronutrients, total sugar, and added-sugar tracking
+- Food-group and meal-balance feedback
+- Meal, water, mood, energy, and exercise logging
+- Daily missions, streaks, and weekly progress
+- Age-aware AI health assistant
+- English, Bahasa Melayu, and Simplified Chinese
+- Local backup and data deletion
+- Progressive Web App support
+
+## Technology
+
+- React and TypeScript
+- Next.js-compatible application powered by Vinext and Vite
+- Tailwind CSS
+- OpenAI Responses API with JSON Schema structured outputs
+- Cloudflare-compatible server deployment
+- Browser local storage for device-local records
+
+## Running the project locally
+
+### Requirements
+
+- Node.js 22.13 or later
+- An OpenAI API key
+
+### Setup
+
+```bash
+npm install
+```
+
+Create a local environment file and add the API configuration:
+
+```env
+OPENAI_API_KEY=your_api_key_here
+OPENAI_MODEL=gpt-4.1-mini
+```
+
+Never commit a real API key to the repository.
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+Create a production build:
+
+```bash
+npm run build
+```
+
+## Current product status
+
+The Normal Assistant is available with a daily question allowance. Fit+ currently uses one simple assistant experience without paid or premium plans.
+
+## Future improvements
+
+- Secure user accounts and cross-device synchronisation
+- Parent or guardian-linked profiles for younger users
+- Barcode and food-photo input
+- A verified Malaysian food nutrition database to complement AI estimates
+- Optional reminders and native mobile packaging
+- Clinician-reviewed educational content and broader BMI-for-age reference data
+
+## Disclaimer
+
+Fit+ provides general education and habit guidance only. It does not provide medical diagnosis, treatment, emergency assistance, or a substitute for advice from a doctor, dietitian, or other qualified healthcare professional.
