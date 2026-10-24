@@ -8,7 +8,7 @@ export default defineConfig({
   resolve: { alias: { "@": fileURLToPath(new URL(".", import.meta.url)) } },
   define: {
     "process.env.NEXT_PUBLIC_BASE_PATH": JSON.stringify(base),
-    "process.env.NEXT_PUBLIC_FIT_AI_CONNECTION": JSON.stringify("https://fit-plus-health.eddielau.chatgpt.site/ai-connect"),
+    "process.env.NEXT_PUBLIC_FIT_AI_ENDPOINT": JSON.stringify("https://fit-plus-health.eddielau.chatgpt.site/api/ai"),
   },
   plugins: [react()],
   build: { outDir: "dist/github-pages" },

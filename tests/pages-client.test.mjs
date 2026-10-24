@@ -1,77 +1,50 @@
-import test from "node:test";
-import assert from "node:assert/strict";
-import vm from "node:vm";
-import { readFileSync } from "node:fs";
-import ts from "typescript";
-
-const url = "https://fit-plus-health.eddielau.chatgpt.site/ai-connect";
-const origin = new URL(url).origin;
-const source = readFileSync(new URL("../lib/fit-ai-client.ts", import.meta.url), "utf8");
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import vm from 'node:vm';
+import { readFileSync } from 'node:fs';
+import ts from 'typescript';
+const source = readFileSync(new URL('../lib/fit-ai-client.ts', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-
-function setup(connectionURL = url, popupAllowed = true) {
-  const messages = [], handlers = new Set(), intervals = new Map(), timeouts = new Map(), fetches = [];
-  let timerID = 0;
-  const child = { closed: false, postMessage: (data, target) => messages.push({data,target}) };
-  const window = {
-    open: () => popupAllowed ? child : null,
-    addEventListener: (type, handler) => handlers.add(handler),
-    removeEventListener: (type, handler) => handlers.delete(handler),
-    setInterval: fn => { intervals.set(++timerID, fn); return timerID; },
-    clearInterval: id => intervals.delete(id),
-    setTimeout: fn => { timeouts.set(++timerID, fn); return timerID; },
-    clearTimeout: id => timeouts.delete(id),
-  };
-  const context = { exports: {}, process: { env: { NEXT_PUBLIC_FIT_AI_CONNECTION: connectionURL } }, window, crypto: { randomUUID: () => "12345678-abcd-1234-abcd-123456789012" }, URL, Response, fetch: async (...args) => { fetches.push(args); return new Response('{}'); } };
+const endpoint = 'https://fit-plus-health.eddielau.chatgpt.site/api/ai';
+function setup(url = endpoint, implementation = async () => Response.json({result:{answer:'Hello'}})) {
+  const calls = [];
+  const context = { exports: {}, process: { env: { NEXT_PUBLIC_FIT_AI_ENDPOINT: url } },
+    AbortController, Response, TypeError, setTimeout, clearTimeout,
+    window: { open() { throw new Error('A popup must never open'); } },
+    fetch: async (...args) => { calls.push(args); return implementation(...args); } };
   vm.runInNewContext(compiled, context);
-  const send = (data, eventOrigin = origin, eventSource = child) => { for (const handler of [...handlers]) handler({ data, origin: eventOrigin, source: eventSource }); };
-  return { request: context.exports.requestFitAI, child, messages, handlers, intervals, timeouts, fetches, send };
+  return { request: context.exports.requestFitAI, calls };
 }
-const request = { method: 'POST', body: JSON.stringify({kind:'calories', food:'one apple'}) };
-
-test('Sites version retains its original same-origin endpoint', async () => {
-  const s = setup(''); await s.request(request);
-  assert.equal(s.fetches[0][0], '/api/ai'); assert.equal(s.messages.length,0);
+const init = { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({kind:'assistant',question:'Suggest a snack'}) };
+test('GitHub uses direct API calls for repeated questions without opening windows', async () => {
+  const s=setup();
+  for(let i=0;i<3;i++) assert.equal((await (await s.request(init)).json()).result.answer,'Hello');
+  assert.equal(s.calls.length,3);
+  assert.ok(s.calls.every(([url,options])=> url===endpoint && options.credentials==='omit' && options.redirect==='error'));
 });
-test('blocked connection window returns a useful error', async () => {
-  await assert.rejects(setup(url,false).request(request), /allow the Fit\+ connection window/);
+test('Sites retains the same-origin API endpoint', async () => {
+  const s=setup(''); await s.request(init); assert.equal(s.calls[0][0],'/api/ai');
 });
-test('wrong origin and wrong window cannot receive a food request', async () => {
-  const s=setup(); const pending=s.request(request);
-  s.send({type:'fitplus:ready'},'https://example.com');
-  s.send({type:'fitplus:ready'},origin,{});
-  assert.equal(s.messages.length,0);
-  s.send({type:'fitplus:ready'});
-  assert.equal(s.messages.length,1); assert.equal(s.messages[0].target,origin);
-  assert.equal(s.messages[0].data.payload.food,'one apple');
-  s.send({type:'fitplus:response',id:s.messages[0].data.id,status:200,data:{result:{items:[]}}});
-  const response=await pending; assert.equal(response.status,200);
-  assert.equal(s.handlers.size,0); assert.equal(s.intervals.size,0); assert.equal(s.timeouts.size,0);
+test('quota and paused responses are returned to the interface without retries', async () => {
+  for(const status of [429,503]) {
+    const s=setup(endpoint,async()=>Response.json({error:'Allowance reached'},{status}));
+    const r=await s.request(init); assert.equal(r.status,status); assert.equal((await r.json()).error,'Allowance reached'); assert.equal(s.calls.length,1);
+  }
 });
-test('repeated ready messages never duplicate a paid API request', async () => {
-  const s=setup(); const pending=s.request(request); s.send({type:'fitplus:ready'}); s.send({type:'fitplus:ready'});
-  assert.equal(s.messages.length,1);
-  s.send({type:'fitplus:response',id:s.messages[0].data.id,status:503,data:{error:'unavailable'}});
-  assert.equal((await pending).status,503);
+test('HTML sign-in responses cannot appear as successful AI answers', async()=> {
+  const s=setup(endpoint,async()=>new Response('<html>Sign in</html>',{headers:{'Content-Type':'text/html'}}));
+  await assert.rejects(s.request(init),/connection is unavailable/);
 });
-test('unrelated responses do not complete the current request', async () => {
-  const s=setup(); const pending=s.request(request); s.send({type:'fitplus:ready'});
-  s.send({type:'fitplus:response',id:'wrong-id',status:200,data:{}});
-  assert.equal(s.handlers.size,1);
-  s.send({type:'fitplus:response',id:s.messages[0].data.id,status:200,data:{result:{answer:'hello'}}});
-  assert.equal((await(await pending).json()).result.answer,'hello');
+test('network failures reset the pending state and permit an explicit next attempt',async()=> {
+  const s=setup(endpoint,async()=>{throw new TypeError('Failed to fetch');});
+  await assert.rejects(s.request(init),/internet connection/); await assert.rejects(s.request(init),/internet connection/); assert.equal(s.calls.length,2);
 });
-test('a second concurrent request cannot replace the connection window', async () => {
-  const s=setup(); const pending=s.request(request); await assert.rejects(s.request(request),/finish your current/);
-  s.send({type:'fitplus:ready'}); s.send({type:'fitplus:response',id:s.messages[0].data.id,status:200,data:{}}); await pending;
+test('a second simultaneous click cannot create another billed request',async()=> {
+  let release; const s=setup(endpoint,()=>new Promise(r=>release=r));
+  const first=s.request(init); await assert.rejects(s.request(init),/finish your current/);
+  release(Response.json({result:{answer:'Hello'}})); await first; assert.equal(s.calls.length,1);
 });
-test('closing the connection cleans up pending timers and listeners', async () => {
-  const s=setup(); const pending=s.request(request); s.child.closed=true;
-  for(const fn of [...s.intervals.values()]) fn();
-  await assert.rejects(pending,/window was closed/); assert.equal(s.handlers.size,0);
-});
-test('connection timeout is reported and cleaned up', async () => {
-  const s=setup(); const pending=s.request(request);
-  for(const fn of [...s.timeouts.values()]) fn();
-  await assert.rejects(pending,/timed out/); assert.equal(s.handlers.size,0);
+test('caller cancellation is forwarded and cleaned up',async()=> {
+  const s=setup(endpoint,(_,options)=>new Promise((resolve,reject)=> options.signal.addEventListener('abort',()=>reject(new Error('aborted')))));
+  const c=new AbortController(); const p=s.request({...init,signal:c.signal}); c.abort(); await assert.rejects(p,/cancelled/);
 });

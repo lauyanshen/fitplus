@@ -1,4 +1,11 @@
-// Intentionally empty by default.
-// Add Drizzle tables here when the site actually needs a database.
-// See examples/d1/db/schema.ts for an opt-in example.
-export {};
+import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+
+// Operational counters only: no questions, photos or health records are stored.
+export const aiUsage = sqliteTable("ai_usage", {
+  key: text("key").primaryKey(),
+  count: integer("count").notNull().default(0),
+});
+export const aiSettings = sqliteTable("ai_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+});

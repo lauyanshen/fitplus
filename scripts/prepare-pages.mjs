@@ -18,7 +18,7 @@ const cache = prefix + hash.digest("hex").slice(0,12);
 const assets = [base,...files.map(f=>base+path.relative(root,f).split(path.sep).join("/"))];
 await writeFile(path.join(root,"sw.js"), `const CACHE=${JSON.stringify(cache)};
 const ASSETS=${JSON.stringify(assets)};
-self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS))));
+self.addEventListener('install',event=>event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',event=>event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith(${JSON.stringify(prefix)})&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',event=>{const u=new URL(event.request.url);if(event.request.method!=='GET'||u.origin!==self.location.origin||!u.pathname.startsWith(${JSON.stringify(base)}))return;event.respondWith(caches.open(CACHE).then(cache=>cache.match(event.request,{ignoreVary:true})).then(cached=>cached||fetch(event.request)));});
 `);

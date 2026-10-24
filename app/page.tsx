@@ -1,6 +1,8 @@
 "use client";
 import { FormEvent, useEffect, useState } from "react";
 import { createPresentationWeek } from "@/lib/presentation-week";
+import { requestFitAI } from "@/lib/fit-ai-client";
+import { fitAsset } from "@/lib/fit-assets";
 import {
   Activity,
   Apple,
@@ -669,7 +671,7 @@ export default function Home() {
     setFoodError("");
     setEstimates([]);
     try {
-      const r = await fetch("/api/ai", {
+      const r = await requestFitAI({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ kind: "calories", food: foodQuery, language }),
@@ -703,7 +705,7 @@ export default function Home() {
     setFoodError("");
     setEstimates([]);
     try {
-      const response = await fetch("/api/ai", {
+      const response = await requestFitAI({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ kind: "food_photo", image: foodPhoto, language }),
@@ -766,7 +768,7 @@ export default function Home() {
     setChatLoading(true);
     setChatError("");
     try {
-      const r = await fetch("/api/ai", {
+      const r = await requestFitAI({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1260,7 +1262,7 @@ function CoachOverview(props: Parameters<typeof Overview>[0] & { language: Langu
     <div className="space-y-4">
       {teen && <TeenMissionBoard addedSugar={addedSugar} sugarLimit={sugarLimit} activeMinutes={activeMinutes} water={water} addWater={addWater} go={go} language={language} schoolDay={schoolDay} teenFocus={teenFocus} totalSugar={totalSugar} mealLogged={mealLogged} />}
       <article className="relative min-h-[244px] overflow-hidden rounded-[22px] border border-[#dce9e2] bg-[#eaf8f0] shadow-[0_14px_40px_rgba(24,72,51,.07)] sm:rounded-[26px]">
-        <img src="/assets/fitplus/plus-coach.webp" alt="Fit+ AI wellness coach" className="absolute inset-y-0 left-0 hidden h-full w-[46%] object-cover object-left sm:block" />
+        <img src={fitAsset("/assets/fitplus/plus-coach.webp")} alt="Fit+ AI wellness coach" className="absolute inset-y-0 left-0 hidden h-full w-[46%] object-cover object-left sm:block" />
         <div className="relative ml-auto w-full p-5 sm:w-[58%] sm:p-7">
           <div className="flex items-center justify-between gap-2"><div className="flex min-w-0 flex-wrap items-center gap-2 text-sm font-extrabold text-[#19613f]"><Bot size={18}/> {tr(language,"normalAssistant")}</div><button aria-label="More coach actions" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/65 text-[#416354]"><MoreHorizontal size={20}/></button></div>
           <h2 className="mt-5 text-[1.35rem] font-black tracking-[-.02em] sm:text-2xl">{tr(language,"goodMorning")}</h2>
@@ -1270,7 +1272,7 @@ function CoachOverview(props: Parameters<typeof Overview>[0] & { language: Langu
       </article>
       <article className="rounded-[22px] border border-[#e0e9e4] bg-white p-4 shadow-[0_12px_35px_rgba(27,69,50,.05)] sm:rounded-[26px] sm:p-6">
         <div className="flex items-center justify-between gap-4 border-b border-[#edf1ef] pb-4"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-[#ddf3e6] text-[#177147]"><CalendarDays size={19}/></div><div><h2 className="text-xl font-extrabold">{tr(language,"planToday")}</h2><p className="text-sm text-[#75827c]">{completed} {tr(language,"stepsComplete")}</p></div></div><span className="hidden rounded-full bg-[#eef6f2] px-3 py-1.5 text-xs font-extrabold text-[#176044] sm:inline">{dailyScore}% {tr(language,"momentum")}</span></div>
-        {items.map((item,index)=><button key={item.title} onClick={()=>item.target==="checkin"?document.getElementById("wellbeing-checkin")?.scrollIntoView({behavior:"smooth"}):go(item.target)} className="grid w-full grid-cols-[34px_minmax(0,1fr)_48px] items-center gap-2 border-b border-[#eef2f0] py-4 text-left last:border-0 sm:grid-cols-[38px_1fr_auto] sm:gap-3"><div className={`grid h-8 w-8 place-items-center rounded-full text-sm font-black ${item.done?"bg-[#1b7a4b] text-white":"bg-[#e4f2ea] text-[#176044]"}`}>{item.done?<CheckCircle2 size={17}/>:index+1}</div><div className="min-w-0"><p className="font-extrabold">{item.title}</p><p className="mt-0.5 text-xs leading-5 text-[#75817b]">{item.detail}</p></div><div className="flex items-center gap-2"><span className="hidden rounded-xl border border-[#d9e5df] px-3 py-2 text-xs font-extrabold text-[#174b35] hover:bg-[#eff7f3] sm:block">{item.action} <ChevronRight className="inline" size={14}/></span><img src={item.image} alt="" className="h-12 w-12 rounded-xl object-cover sm:h-14 sm:w-16"/></div></button>)}
+        {items.map((item,index)=><button key={item.title} onClick={()=>item.target==="checkin"?document.getElementById("wellbeing-checkin")?.scrollIntoView({behavior:"smooth"}):go(item.target)} className="grid w-full grid-cols-[34px_minmax(0,1fr)_48px] items-center gap-2 border-b border-[#eef2f0] py-4 text-left last:border-0 sm:grid-cols-[38px_1fr_auto] sm:gap-3"><div className={`grid h-8 w-8 place-items-center rounded-full text-sm font-black ${item.done?"bg-[#1b7a4b] text-white":"bg-[#e4f2ea] text-[#176044]"}`}>{item.done?<CheckCircle2 size={17}/>:index+1}</div><div className="min-w-0"><p className="font-extrabold">{item.title}</p><p className="mt-0.5 text-xs leading-5 text-[#75817b]">{item.detail}</p></div><div className="flex items-center gap-2"><span className="hidden rounded-xl border border-[#d9e5df] px-3 py-2 text-xs font-extrabold text-[#174b35] hover:bg-[#eff7f3] sm:block">{item.action} <ChevronRight className="inline" size={14}/></span><img src={fitAsset(item.image)} alt="" className="h-12 w-12 rounded-xl object-cover sm:h-14 sm:w-16"/></div></button>)}
       </article>
       <article id="wellbeing-checkin" className="rounded-[26px] border border-[#e0e9e4] bg-white p-5 shadow-[0_12px_35px_rgba(27,69,50,.05)] sm:p-6">
         <div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-[#ddf3e6] text-[#177147]"><Smile size={20}/></div><div><h2 className="text-lg font-extrabold">{tr(language,"feelingToday")}</h2><p className="text-xs text-[#75817b]">{tr(language,"checkinHelp")}</p></div></div>

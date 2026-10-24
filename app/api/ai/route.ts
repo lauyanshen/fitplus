@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { env } from "cloudflare:workers";
+import { FIT_ORIGINS, hashClient, reserveAiRequest, type UsageDB } from "@/lib/ai-access";
 const NORMAL_MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
 const foodItemSchema = {
   type: "object",
@@ -87,7 +89,58 @@ function normaliseFoodResult(result: unknown) {
     }),
   };
 }
+function withCors(response: Response, origin: string) {
+  response.headers.set("Access-Control-Allow-Origin", origin);
+  response.headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
+  response.headers.set("Access-Control-Allow-Headers", "Content-Type");
+  response.headers.set("Access-Control-Max-Age", "600");
+  response.headers.set("Vary", "Origin");
+  response.headers.set("Cache-Control", "no-store");
+  return response;
+}
+
+export function OPTIONS(req: NextRequest) {
+  const origin = req.headers.get("origin") || "";
+  if (!FIT_ORIGINS.has(origin)) return new Response(null, { status: 403 });
+  const requestedHeaders = (req.headers.get("access-control-request-headers") || "").toLowerCase().split(",").map(h => h.trim()).filter(Boolean);
+  if ((req.headers.get("access-control-request-method") || "POST") !== "POST" || requestedHeaders.some(h => h !== "content-type"))
+    return withCors(new Response(null, { status: 403 }), origin);
+  return withCors(new Response(null, { status: 204 }), origin);
+}
+
 export async function POST(req: NextRequest) {
+  const origin = req.headers.get("origin") || "";
+  if (!FIT_ORIGINS.has(origin)) return NextResponse.json({ error: "This origin is not allowed." }, { status: 403 });
+  const reply = (message: string, status: number) => withCors(NextResponse.json({ error: message }, { status }), origin);
+  if (!(req.headers.get("content-type") || "").toLowerCase().startsWith("application/json")) return reply("Send JSON data.", 415);
+  try {
+    // Bound the streamed body as well as Content-Length; do not trust that header.
+    const reader = req.body?.getReader();
+    if (!reader) return reply("Invalid request.", 400);
+    let length = 0;
+    const chunks: Uint8Array[] = [];
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      length += chunk.value.byteLength;
+      if (length > 4_600_000) { await reader.cancel(); return reply("This request is too large.", 413); }
+      chunks.push(chunk.value);
+    }
+    const joined = new Uint8Array(length);
+    let offset = 0;
+    for (const chunk of chunks) { joined.set(chunk, offset); offset += chunk.byteLength; }
+    let body;
+    try { body = JSON.parse(new TextDecoder().decode(joined)); }
+    catch { return reply("Invalid JSON data.", 400); }
+    if (!body || typeof body !== "object" || Array.isArray(body)) return reply("Invalid request.", 400);
+    if (body.kind !== "food_photo" && length > 20_000) return reply("This request is too large.", 413);
+    return withCors(await handlePost(req, body), origin);
+  } catch {
+    return reply("Fit+ could not complete this request. Please try again.", 503);
+  }
+}
+
+async function handlePost(req: NextRequest, body: Record<string, unknown>) {
   try {
     const key = process.env.OPENAI_API_KEY;
     if (!key)
@@ -98,8 +151,7 @@ export async function POST(req: NextRequest) {
         },
         { status: 503 },
       );
-    const body = await req.json(),
-      kind = body?.kind,
+    const kind = body?.kind,
       language =
         body?.language === "ms"
           ? "Bahasa Melayu"
@@ -154,14 +206,23 @@ export async function POST(req: NextRequest) {
       instructions = `You are Fit+, a fast, supportive wellness assistant. Answer directly using the supplied context and age. Under 20: no adult BMI labels, calorie deficits, weight-loss targets or dieting; suggest balanced family meals, sleep, enjoyable activity and parent/paediatric guidance. Age 65+: prioritise strength, balance, hydration, nourishment and gradual change; flag unintentional weight loss. Age 20–64: support gradual sustainable goals. Never diagnose or recommend extreme restriction, purging, supplements, medicines or treatment changes. For urgent symptoms, self-harm, eating-disorder signs, pregnancy or serious concerns, advise professional care. Give 2–4 practical points in no more than 100 words. Reply only in ${language}.`;
       input = JSON.stringify({ question, context: body.context || {} });
     }
+    if (process.env.FIT_AI_ENABLED === "false")
+      return NextResponse.json({ error: "Fit+ AI is paused by the owner." }, { status: 503 });
+    const db = (env as unknown as { DB?: UsageDB }).DB;
+    if (!db) return NextResponse.json({ error: "The AI usage controls are unavailable. Please ask the owner." }, { status: 503 });
+    const clientHash = await hashClient(req.headers.get("cf-connecting-ip") || "shared-network");
+    const denied = await reserveAiRequest(db, clientHash);
+    if (denied) return NextResponse.json({ error: denied.error }, { status: denied.status });
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
+      signal: AbortSignal.timeout(100_000),
       headers: {
         Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         model: NORMAL_MODEL,
+        store: false,
         instructions,
         input,
         text: {

@@ -21,7 +21,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <meta name="codex-preview" content="development" />
         <meta name="theme-color" content="#153f2d" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
       </head>
