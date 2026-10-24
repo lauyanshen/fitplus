@@ -47,6 +47,7 @@ type Profile = {
 };
 type Language = "en" | "ms" | "zh";
 type AssistantUsage = { date: string; count: number };
+const MAX_FOOD_PHOTOS = 4;
 const words: Record<Language, Record<string, string>> = {
   en: {
     Overview: "Overview",
@@ -61,12 +62,13 @@ const words: Record<Language, Record<string, string>> = {
     listFood: "List each food",
     aiSearch: "AI calorie search",
     estimateEach: "Estimate each food",
-    photoMeal: "Take or upload a food photo",
-    photoMealHelp: "Use a clear photo from above. The photo is sent to AI only when you tap Analyse photo; it is not saved in your meal history.",
+    photoMeal: "Take or upload food photos",
+    photoMealHelp: "Add up to 4 clear photos. They are sent to AI only when you tap Analyse photos and are not saved in your meal history.",
     choosePhoto: "Choose food photo",
     takePhoto: "Take photo",
     chooseGallery: "Choose from gallery",
-    analyzePhoto: "Analyse photo",
+    analyzePhoto: "Analyse photos",
+    photosSelected: "photos selected",
     changePhoto: "Change photo",
     photoEstimateNote: "Photo estimates are approximate. Check the detected foods and portions before adding them.",
     removePhoto: "Remove photo",
@@ -126,11 +128,12 @@ const words: Record<Language, Record<string, string>> = {
     aiSearch: "Carian kalori AI",
     estimateEach: "Anggar setiap makanan",
     photoMeal: "Ambil atau muat naik foto makanan",
-    photoMealHelp: "Gunakan foto yang jelas dari atas. Foto dihantar kepada AI hanya apabila anda menekan Analisis foto; foto tidak disimpan dalam sejarah makanan.",
+    photoMealHelp: "Tambah sehingga 4 foto yang jelas. Foto dihantar kepada AI hanya apabila anda menekan Analisis foto dan tidak disimpan dalam sejarah makanan.",
     choosePhoto: "Pilih foto makanan",
     takePhoto: "Ambil foto",
     chooseGallery: "Pilih dari galeri",
     analyzePhoto: "Analisis foto",
+    photosSelected: "foto dipilih",
     changePhoto: "Tukar foto",
     photoEstimateNote: "Anggaran foto adalah anggaran sahaja. Semak makanan dan saiz hidangan sebelum menambahnya.",
     removePhoto: "Buang foto",
@@ -192,11 +195,12 @@ const words: Record<Language, Record<string, string>> = {
     aiSearch: "AI卡路里查询",
     estimateEach: "估算每项食物",
     photoMeal: "拍摄或上传食物照片",
-    photoMealHelp: "请使用清晰的俯拍照片。只有点击分析照片后，照片才会发送给AI；照片不会保存在饮食记录中。",
+    photoMealHelp: "最多添加4张清晰照片。只有点击分析照片后，照片才会发送给AI，且不会保存在饮食记录中。",
     choosePhoto: "选择食物照片",
     takePhoto: "拍摄照片",
     chooseGallery: "从相册选择",
     analyzePhoto: "分析照片",
+    photosSelected: "张照片已选择",
     changePhoto: "更换照片",
     photoEstimateNote: "照片分析仅为估算。添加前请检查识别出的食物和分量。",
     removePhoto: "移除照片",
@@ -374,13 +378,13 @@ async function prepareFoodPhoto(file: File) {
     element.onerror = () => reject(new Error("The photo could not be opened."));
     element.src = source;
   });
-  const max = 1280;
+  const max = 1024;
   const scale = Math.min(1, max / Math.max(image.width, image.height));
   const canvas = document.createElement("canvas");
   canvas.width = Math.max(1, Math.round(image.width * scale));
   canvas.height = Math.max(1, Math.round(image.height * scale));
   canvas.getContext("2d")?.drawImage(image, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL("image/jpeg", 0.78);
+  return canvas.toDataURL("image/jpeg", 0.72);
 }
 function dayKey(date: Date) {
   const year = date.getFullYear();
@@ -506,7 +510,7 @@ export default function Home() {
     [foodLoading, setFoodLoading] = useState(false),
     [foodError, setFoodError] = useState(""),
     [estimates, setEstimates] = useState<FoodEstimate[]>([]),
-    [foodPhoto, setFoodPhoto] = useState(""),
+    [foodPhotos, setFoodPhotos] = useState<string[]>([]),
     [photoLoading, setPhotoLoading] = useState(false);
   const [exerciseName, setExerciseName] = useState(""),
     [minutes, setMinutes] = useState(30),
@@ -696,18 +700,22 @@ export default function Home() {
       setFoodLoading(false);
     }
   }
-  async function selectFoodPhoto(file?: File) {
-    if (!file) return;
+  async function selectFoodPhotos(files?: FileList | File[]) {
+    const selected = Array.from(files || []);
+    if (!selected.length) return;
     setFoodError("");
     try {
-      setFoodPhoto(await prepareFoodPhoto(file));
+      const remaining = Math.max(0, MAX_FOOD_PHOTOS - foodPhotos.length);
+      if (!remaining) throw new Error(`You can analyse up to ${MAX_FOOD_PHOTOS} photos at once.`);
+      const prepared = await Promise.all(selected.slice(0, remaining).map(prepareFoodPhoto));
+      setFoodPhotos((current) => [...current, ...prepared].slice(0, MAX_FOOD_PHOTOS));
       setEstimates([]);
     } catch (error) {
       setFoodError(error instanceof Error ? error.message : "The photo could not be prepared.");
     }
   }
   async function estimateFoodPhoto() {
-    if (!foodPhoto) return;
+    if (!foodPhotos.length) return;
     setPhotoLoading(true);
     setFoodError("");
     setEstimates([]);
@@ -715,7 +723,7 @@ export default function Home() {
       const response = await requestFitAI({
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind: "food_photo", image: foodPhoto, language }),
+        body: JSON.stringify({ kind: "food_photo", images: foodPhotos, language }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Could not analyse this food photo.");
@@ -932,11 +940,12 @@ export default function Home() {
               setQuery={setFoodQuery}
               submit={estimateFood}
               loading={foodLoading}
-              photo={foodPhoto}
+              photos={foodPhotos}
               photoLoading={photoLoading}
-              selectPhoto={selectFoodPhoto}
+              selectPhotos={selectFoodPhotos}
               analyzePhoto={estimateFoodPhoto}
-              clearPhoto={() => { setFoodPhoto(""); setEstimates([]); }}
+              removePhoto={(index) => { setFoodPhotos((current) => current.filter((_, itemIndex) => itemIndex !== index)); setEstimates([]); }}
+              clearPhotos={() => { setFoodPhotos([]); setEstimates([]); }}
               error={foodError}
               estimates={estimates}
               add={addFoods}
@@ -1627,11 +1636,12 @@ function Meals({
   setQuery,
   submit,
   loading,
-  photo,
+  photos,
   photoLoading,
-  selectPhoto,
+  selectPhotos,
   analyzePhoto,
-  clearPhoto,
+  removePhoto,
+  clearPhotos,
   error,
   estimates,
   add,
@@ -1647,11 +1657,12 @@ function Meals({
   setQuery: (s: string) => void;
   submit: (e: FormEvent) => void;
   loading: boolean;
-  photo: string;
+  photos: string[];
   photoLoading: boolean;
-  selectPhoto: (file?: File) => void;
+  selectPhotos: (files?: FileList | File[]) => void;
   analyzePhoto: () => void;
-  clearPhoto: () => void;
+  removePhoto: (index: number) => void;
+  clearPhotos: () => void;
   error: string;
   estimates: FoodEstimate[];
   add: () => void;
@@ -1721,35 +1732,44 @@ function Meals({
               <p className="mt-1 text-xs leading-5 text-[#627168]">{tr(language, "photoMealHelp")}</p>
             </div>
           </div>
-          {photo ? (
+          {photos.length ? (
             <div className="mt-4">
-              <img src={photo} alt="Food selected for AI estimation" className="h-52 w-full rounded-2xl object-cover" />
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {photos.map((photo, index) => (
+                  <div key={`${photo.slice(-24)}-${index}`} className="relative overflow-hidden rounded-2xl border border-white bg-white shadow-sm">
+                    <img src={photo} alt={`Food photo ${index + 1} selected for AI estimation`} className="h-28 w-full object-cover sm:h-32" />
+                    <button type="button" onClick={() => removePhoto(index)} aria-label={`${tr(language, "removePhoto")} ${index + 1}`} className="absolute right-1.5 top-1.5 grid h-8 w-8 place-items-center rounded-full bg-black/65 text-white"><X size={16} /></button>
+                    <span className="absolute bottom-1.5 left-1.5 rounded-full bg-white/90 px-2 py-0.5 text-xs font-extrabold text-[#174b35]">{index + 1}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-2 text-xs font-bold text-[#24583f]">{photos.length} / {MAX_FOOD_PHOTOS} {tr(language, "photosSelected")}</p>
               <p className="mt-2 text-xs leading-5 text-[#627168]">{tr(language, "photoEstimateNote")}</p>
               <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#b8d0c1] bg-white px-3 py-3 text-center text-sm font-bold text-[#24583f]">
+                <label className={`flex items-center justify-center gap-2 rounded-xl border border-[#b8d0c1] bg-white px-3 py-3 text-center text-sm font-bold text-[#24583f] ${photos.length >= MAX_FOOD_PHOTOS ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}>
                   <Camera size={17} /> {tr(language, "takePhoto")}
-                  <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => { selectPhoto(event.target.files?.[0]); event.currentTarget.value = ""; }} />
+                  <input type="file" accept="image/*" capture="environment" disabled={photos.length >= MAX_FOOD_PHOTOS} className="sr-only" onChange={(event) => { selectPhotos(event.target.files || undefined); event.currentTarget.value = ""; }} />
                 </label>
-                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#b8d0c1] bg-white px-3 py-3 text-center text-sm font-bold text-[#24583f]">
+                <label className={`flex items-center justify-center gap-2 rounded-xl border border-[#b8d0c1] bg-white px-3 py-3 text-center text-sm font-bold text-[#24583f] ${photos.length >= MAX_FOOD_PHOTOS ? "cursor-not-allowed opacity-50" : "cursor-pointer"}`}>
                   <ImagePlus size={17} /> {tr(language, "chooseGallery")}
-                  <input type="file" accept="image/*" className="sr-only" onChange={(event) => { selectPhoto(event.target.files?.[0]); event.currentTarget.value = ""; }} />
+                  <input type="file" accept="image/*" multiple disabled={photos.length >= MAX_FOOD_PHOTOS} className="sr-only" onChange={(event) => { selectPhotos(event.target.files || undefined); event.currentTarget.value = ""; }} />
                 </label>
                 <button type="button" disabled={photoLoading} onClick={analyzePhoto} className="flex items-center justify-center gap-2 rounded-xl bg-[#176044] px-3 py-3 text-sm font-bold text-white disabled:opacity-50">
                   {photoLoading ? <LoaderCircle className="animate-spin" size={18} /> : <Sparkles size={18} />}
                   {tr(language, "analyzePhoto")}
                 </button>
               </div>
-              <button type="button" onClick={clearPhoto} className="mt-2 w-full text-xs font-bold text-[#6b766f] hover:text-red-700">{tr(language, "removePhoto")}</button>
+              <button type="button" onClick={clearPhotos} className="mt-2 w-full text-xs font-bold text-[#6b766f] hover:text-red-700">{tr(language, "removePhoto")}</button>
             </div>
           ) : (
             <div className="mt-4 grid gap-2 sm:grid-cols-2">
               <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#176044] px-4 py-3 font-bold text-white shadow-sm">
                 <Camera size={19} /> {tr(language, "takePhoto")}
-                <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => { selectPhoto(event.target.files?.[0]); event.currentTarget.value = ""; }} />
+                <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => { selectPhotos(event.target.files || undefined); event.currentTarget.value = ""; }} />
               </label>
               <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#176044] bg-white px-4 py-3 font-bold text-[#176044] shadow-sm">
                 <ImagePlus size={19} /> {tr(language, "chooseGallery")}
-                <input type="file" accept="image/*" className="sr-only" onChange={(event) => { selectPhoto(event.target.files?.[0]); event.currentTarget.value = ""; }} />
+                <input type="file" accept="image/*" multiple className="sr-only" onChange={(event) => { selectPhotos(event.target.files || undefined); event.currentTarget.value = ""; }} />
               </label>
             </div>
           )}

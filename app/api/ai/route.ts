@@ -176,10 +176,17 @@ async function handlePost(req: NextRequest, body: Record<string, unknown>) {
       instructions = `You are Fit+, a cautious nutrition estimator. Treat every separate line or clearly listed food as an individual item and return one result for each, in the same order. Never combine different foods. Use typical Malaysian or international portions. Estimate calories, macros, totalSugar, addedSugar and freeSugar in grams. addedSugar is sugar added during processing, cooking or serving. freeSugar includes addedSugar plus sugars in honey, syrups, fruit juice and fruit-juice concentrates. Sugar in intact fruit and plain milk is not free sugar. Always keep addedSugar <= freeSugar <= totalSugar. The app presents freeSugar as one combined added/free-sugar figure, so never add addedSugar to freeSugar. Classify food groups and overall balance based on portion, fibre, vegetables, protein, processing, saturated fat, sodium and free sugar. 'often' means generally suitable regularly, 'sometimes' means portion/context matters, and 'limit' means high free sugar, sodium, saturated fat or heavily processed. Do not moralise food or diagnose health. If details are unclear, assume one serving and lower confidence. Keep note and balanceNote below 20 words each. Return no more than 12 items. Write the food name, portion, note and balanceNote in ${language}; keep required enum values unchanged.`;
       input = food;
     } else if (kind === "food_photo") {
-      const image = String(body.image || "");
-      if (!/^data:image\/(jpeg|jpg|png|webp);base64,/.test(image) || image.length > 4_500_000)
+      const images = Array.isArray(body.images)
+        ? body.images.map((image) => String(image || ""))
+        : [String(body.image || "")];
+      if (
+        images.length < 1 ||
+        images.length > 4 ||
+        images.some((image) => !/^data:image\/(jpeg|jpg|png|webp);base64,/.test(image)) ||
+        images.reduce((total, image) => total + image.length, 0) > 4_500_000
+      )
         return NextResponse.json(
-          { error: "Choose a clear JPG, PNG or WebP food photo under 4 MB." },
+          { error: "Choose 1 to 4 clear JPG, PNG or WebP food photos with a combined size under 4 MB." },
           { status: 400 },
         );
       instructions = `You are Fit+, a cautious food-photo nutrition estimator. Identify each visible food or drink as a separate item. Estimate realistic portions, calories, macros, totalSugar, addedSugar and freeSugar. addedSugar is sugar added during processing, cooking or serving. freeSugar includes addedSugar plus sugars in honey, syrups, fruit juice and fruit-juice concentrates. Sugar in intact fruit and plain milk is not free sugar. Always keep addedSugar <= freeSugar <= totalSugar. The app presents freeSugar as one combined added/free-sugar figure, so never add addedSugar to freeSugar. Use visual evidence only and do not invent hidden ingredients. Classify food groups and balance. If the meal or portion is unclear, use low confidence and explain briefly. Do not diagnose or moralise. Return no more than 12 items. Keep note and balanceNote below 20 words each. Write food names, portions, notes and balanceNote in ${language}; keep required enum values unchanged.`;
@@ -187,8 +194,8 @@ async function handlePost(req: NextRequest, body: Record<string, unknown>) {
         {
           role: "user",
           content: [
-            { type: "input_text", text: "Identify and estimate every visible food and drink in this photo." },
-            { type: "input_image", image_url: image, detail: "low" },
+            { type: "input_text", text: "Identify and estimate every visible food and drink across these photos. Treat them as one meal and do not count the same item twice if it appears in overlapping photos." },
+            ...images.map((image) => ({ type: "input_image", image_url: image, detail: "low" })),
           ],
         },
       ];
