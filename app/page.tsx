@@ -17,6 +17,7 @@ import {
   Dumbbell,
   Flame,
   HeartPulse,
+  ImagePlus,
   LayoutDashboard,
   LoaderCircle,
   MessageCircle,
@@ -63,6 +64,8 @@ const words: Record<Language, Record<string, string>> = {
     photoMeal: "Take or upload a food photo",
     photoMealHelp: "Use a clear photo from above. The photo is sent to AI only when you tap Analyse photo; it is not saved in your meal history.",
     choosePhoto: "Choose food photo",
+    takePhoto: "Take photo",
+    chooseGallery: "Choose from gallery",
     analyzePhoto: "Analyse photo",
     changePhoto: "Change photo",
     photoEstimateNote: "Photo estimates are approximate. Check the detected foods and portions before adding them.",
@@ -125,6 +128,8 @@ const words: Record<Language, Record<string, string>> = {
     photoMeal: "Ambil atau muat naik foto makanan",
     photoMealHelp: "Gunakan foto yang jelas dari atas. Foto dihantar kepada AI hanya apabila anda menekan Analisis foto; foto tidak disimpan dalam sejarah makanan.",
     choosePhoto: "Pilih foto makanan",
+    takePhoto: "Ambil foto",
+    chooseGallery: "Pilih dari galeri",
     analyzePhoto: "Analisis foto",
     changePhoto: "Tukar foto",
     photoEstimateNote: "Anggaran foto adalah anggaran sahaja. Semak makanan dan saiz hidangan sebelum menambahnya.",
@@ -189,6 +194,8 @@ const words: Record<Language, Record<string, string>> = {
     photoMeal: "拍摄或上传食物照片",
     photoMealHelp: "请使用清晰的俯拍照片。只有点击分析照片后，照片才会发送给AI；照片不会保存在饮食记录中。",
     choosePhoto: "选择食物照片",
+    takePhoto: "拍摄照片",
+    chooseGallery: "从相册选择",
     analyzePhoto: "分析照片",
     changePhoto: "更换照片",
     photoEstimateNote: "照片分析仅为估算。添加前请检查识别出的食物和分量。",
@@ -1718,10 +1725,14 @@ function Meals({
             <div className="mt-4">
               <img src={photo} alt="Food selected for AI estimation" className="h-52 w-full rounded-2xl object-cover" />
               <p className="mt-2 text-xs leading-5 text-[#627168]">{tr(language, "photoEstimateNote")}</p>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <label className="cursor-pointer rounded-xl border border-[#b8d0c1] bg-white px-3 py-3 text-center text-sm font-bold text-[#24583f]">
-                  {tr(language, "changePhoto")}
-                  <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => selectPhoto(event.target.files?.[0])} />
+              <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#b8d0c1] bg-white px-3 py-3 text-center text-sm font-bold text-[#24583f]">
+                  <Camera size={17} /> {tr(language, "takePhoto")}
+                  <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => { selectPhoto(event.target.files?.[0]); event.currentTarget.value = ""; }} />
+                </label>
+                <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#b8d0c1] bg-white px-3 py-3 text-center text-sm font-bold text-[#24583f]">
+                  <ImagePlus size={17} /> {tr(language, "chooseGallery")}
+                  <input type="file" accept="image/*" className="sr-only" onChange={(event) => { selectPhoto(event.target.files?.[0]); event.currentTarget.value = ""; }} />
                 </label>
                 <button type="button" disabled={photoLoading} onClick={analyzePhoto} className="flex items-center justify-center gap-2 rounded-xl bg-[#176044] px-3 py-3 text-sm font-bold text-white disabled:opacity-50">
                   {photoLoading ? <LoaderCircle className="animate-spin" size={18} /> : <Sparkles size={18} />}
@@ -1731,10 +1742,16 @@ function Meals({
               <button type="button" onClick={clearPhoto} className="mt-2 w-full text-xs font-bold text-[#6b766f] hover:text-red-700">{tr(language, "removePhoto")}</button>
             </div>
           ) : (
-            <label className="mt-4 flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#176044] px-4 py-3 font-bold text-white shadow-sm">
-              <Camera size={19} /> {tr(language, "choosePhoto")}
-              <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => selectPhoto(event.target.files?.[0])} />
-            </label>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#176044] px-4 py-3 font-bold text-white shadow-sm">
+                <Camera size={19} /> {tr(language, "takePhoto")}
+                <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => { selectPhoto(event.target.files?.[0]); event.currentTarget.value = ""; }} />
+              </label>
+              <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-[#176044] bg-white px-4 py-3 font-bold text-[#176044] shadow-sm">
+                <ImagePlus size={19} /> {tr(language, "chooseGallery")}
+                <input type="file" accept="image/*" className="sr-only" onChange={(event) => { selectPhoto(event.target.files?.[0]); event.currentTarget.value = ""; }} />
+              </label>
+            </div>
           )}
         </div>
         <div className="my-5 flex items-center gap-3 text-xs font-bold uppercase tracking-wider text-[#87938c]"><span className="h-px flex-1 bg-[#dfe7e2]" />{tr(language, "orTypeFoods")}<span className="h-px flex-1 bg-[#dfe7e2]" /></div>
