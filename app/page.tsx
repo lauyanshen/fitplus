@@ -106,7 +106,7 @@ const words: Record<Language, Record<string, string>> = {
     feelingToday: "How are you feeling today?", checkinHelp: "A quick check-in helps your assistant give advice that matches your day.", mood: "Mood", energy: "Energy", low: "Low", okay: "Okay", great: "Great",
     currentStreak: "Current streak", day: "day", days: "days", startToday: "Start today. Consistency builds momentum.", todayGlance: "Today at a glance", live: "Live", Sugar: "Sugar", Water: "Water", logged: "logged", glasses: "glasses", checkIn: "Check in",
     thisWeek: "This week", fiveDays: "Show up on five days. Consistency beats perfection.", smarterGuidance: "Guidance for your real day", useDailyContext: "Ask questions using today’s meals, movement, mood and goals.", chatPlus: "Ask Assistant",
-    recordExercise: "Record exercise", briskWalk: "Brisk walk", homeStrength: "Home strength", cycling: "Cycling", activity: "Activity", durationMinutes: "Duration (minutes)", kcalBurned: "Estimated kcal burned", exerciseEstimate: "Fitness watches may provide a more personal estimate. Exercise calories are approximate.", activitiesRecorded: "Activities recorded", noExercise: "No exercise recorded for this date.", minutes: "minutes",
+    recordExercise: "Record exercise", briskWalk: "Brisk walk", homeStrength: "Home strength", cycling: "Cycling", running: "Running", swimming: "Swimming", yoga: "Yoga / stretching", activity: "Activity", durationMinutes: "Duration (minutes)", kcalBurned: "Estimated kcal burned", exerciseEstimate: "Fitness watches may provide a more personal estimate. Exercise calories are approximate.", activitiesRecorded: "Activities recorded", noExercise: "No exercise recorded for this date.", minutes: "minutes", exerciseGuide: "Log movement in 3 easy steps", chooseActivity: "1. Choose an activity", chooseDuration: "2. Choose the duration", checkEstimate: "3. Check and save", todayMovement: "Today’s movement", caloriesBurnedToday: "estimated kcal burned today", customActivity: "Or type another activity",
     daysMeals: "Days with meals", weeklyActivity: "Weekly activity", goalConsistency: "Goal consistency", last7Days: "Last 7 days", barsCalories: "Bars show calories recorded. Missing days appear blank.",
     profileGoals: "Profile and goals", Name: "Name", Age: "Age", sexEstimate: "Sex used for health estimates", Female: "Female", Male: "Male", heightCm: "Height (cm)", currentWeight: "Current weight (kg)", goalWeight: "Goal weight (kg)", Goal: "Goal", loseWeight: "Lose weight", maintainWeight: "Maintain weight", gainWeight: "Gain weight", Activity: "Activity", mostlySitting: "Mostly sitting", weeklyExercise: "Some weekly exercise", veryActive: "Very active", youthGoal: "Goal: Support healthy growth and build sustainable habits.", yourRecords: "Your records", backupAdvice: "Download a backup before clearing browser data or changing devices.", exportBackup: "Export backup", deleteData: "Delete all data", deleteConfirm: "Delete every Fit+ record on this device? This cannot be undone.",
     paymentRequired: "Payment required for Plus+", paymentCost: "Plus+ costs RM14.90 per month. It only unlocks after a successful, verified payment.", paymentsUnavailable: "Payments are not available yet.", paymentNote: "Fit+’s owner still needs to connect Stripe checkout. You have not been charged, and your Normal plan remains active.", continueNormal: "Continue with Normal — Free",
@@ -173,7 +173,7 @@ const words: Record<Language, Record<string, string>> = {
     feelingToday: "Bagaimana perasaan anda hari ini?", checkinHelp: "Semakan ringkas membantu pembantu memberi nasihat yang sesuai dengan hari anda.", mood: "Emosi", energy: "Tenaga", low: "Rendah", okay: "Sederhana", great: "Baik",
     currentStreak: "Rentetan semasa", day: "hari", days: "hari", startToday: "Mulakan hari ini. Konsistensi membina momentum.", todayGlance: "Ringkasan hari ini", live: "Langsung", Sugar: "Gula", Water: "Air", logged: "direkod", glasses: "gelas", checkIn: "Daftar masuk",
     thisWeek: "Minggu ini", fiveDays: "Aktif selama lima hari. Konsistensi lebih penting daripada kesempurnaan.", smarterGuidance: "Panduan untuk hari sebenar anda", useDailyContext: "Tanya soalan berdasarkan makanan, pergerakan, emosi dan matlamat hari ini.", chatPlus: "Tanya Pembantu",
-    recordExercise: "Rekod senaman", briskWalk: "Berjalan pantas", homeStrength: "Latihan kekuatan di rumah", cycling: "Berbasikal", activity: "Aktiviti", durationMinutes: "Tempoh (minit)", kcalBurned: "Anggaran kcal dibakar", exerciseEstimate: "Jam kecergasan mungkin memberi anggaran yang lebih peribadi. Kalori senaman hanyalah anggaran.", activitiesRecorded: "Aktiviti direkodkan", noExercise: "Tiada senaman direkodkan untuk tarikh ini.", minutes: "minit",
+    recordExercise: "Rekod senaman", briskWalk: "Berjalan pantas", homeStrength: "Latihan kekuatan di rumah", cycling: "Berbasikal", running: "Berlari", swimming: "Berenang", yoga: "Yoga / regangan", activity: "Aktiviti", durationMinutes: "Tempoh (minit)", kcalBurned: "Anggaran kcal dibakar", exerciseEstimate: "Jam kecergasan mungkin memberi anggaran yang lebih peribadi. Kalori senaman hanyalah anggaran.", activitiesRecorded: "Aktiviti direkodkan", noExercise: "Tiada senaman direkodkan untuk tarikh ini.", minutes: "minit", exerciseGuide: "Rekod pergerakan dalam 3 langkah mudah", chooseActivity: "1. Pilih aktiviti", chooseDuration: "2. Pilih tempoh", checkEstimate: "3. Semak dan simpan", todayMovement: "Pergerakan hari ini", caloriesBurnedToday: "anggaran kcal dibakar hari ini", customActivity: "Atau taip aktiviti lain",
     daysMeals: "Hari dengan rekod makanan", weeklyActivity: "Aktiviti mingguan", goalConsistency: "Konsistensi matlamat", last7Days: "7 hari terakhir", barsCalories: "Bar menunjukkan kalori yang direkodkan. Hari tanpa rekod dibiarkan kosong.",
     profileGoals: "Profil dan matlamat", Name: "Nama", Age: "Umur", sexEstimate: "Jantina untuk anggaran kesihatan", Female: "Perempuan", Male: "Lelaki", heightCm: "Tinggi (cm)", currentWeight: "Berat semasa (kg)", goalWeight: "Berat sasaran (kg)", Goal: "Matlamat", loseWeight: "Turunkan berat", maintainWeight: "Kekalkan berat", gainWeight: "Tambah berat", Activity: "Aktiviti", mostlySitting: "Kebanyakannya duduk", weeklyExercise: "Bersenam beberapa kali seminggu", veryActive: "Sangat aktif", youthGoal: "Matlamat: Menyokong tumbesaran sihat dan membina tabiat berkekalan.", yourRecords: "Rekod anda", backupAdvice: "Muat turun sandaran sebelum memadam data pelayar atau menukar peranti.", exportBackup: "Eksport sandaran", deleteData: "Padam semua data", deleteConfirm: "Padam semua rekod Fit+ pada peranti ini? Tindakan ini tidak boleh dibuat asal.",
     paymentRequired: "Bayaran diperlukan untuk Plus+", paymentCost: "Plus+ berharga RM14.90 sebulan dan hanya dibuka selepas bayaran berjaya disahkan.", paymentsUnavailable: "Pembayaran belum tersedia.", paymentNote: "Pemilik Fit+ masih perlu menyambungkan pembayaran Stripe. Anda belum dicaj dan pelan Normal kekal aktif.", continueNormal: "Teruskan dengan Normal — Percuma",
@@ -237,7 +237,7 @@ const words: Record<Language, Record<string, string>> = {
     feelingToday: "你今天感觉怎么样？", checkinHelp: "简单签到可帮助健康助手提供更符合你当天情况的建议。", mood: "心情", energy: "精力", low: "低落", okay: "一般", great: "很好",
     currentStreak: "连续记录", day: "天", days: "天", startToday: "从今天开始，坚持会带来进步。", todayGlance: "今日概览", live: "实时", Sugar: "糖分", Water: "饮水", logged: "已记录", glasses: "杯", checkIn: "签到",
     thisWeek: "本周", fiveDays: "一周完成五天。坚持比完美更重要。", smarterGuidance: "适合你日常生活的建议", useDailyContext: "根据今日饮食、运动、心情和目标提出问题。", chatPlus: "询问助手",
-    recordExercise: "记录运动", briskWalk: "快走", homeStrength: "居家力量训练", cycling: "骑脚踏车", activity: "活动", durationMinutes: "时长（分钟）", kcalBurned: "预计消耗（kcal）", exerciseEstimate: "运动手表可能提供更个人化的估算。运动热量仅供参考。", activitiesRecorded: "已记录的运动", noExercise: "此日期尚未记录运动。", minutes: "分钟",
+    recordExercise: "记录运动", briskWalk: "快走", homeStrength: "居家力量训练", cycling: "骑脚踏车", running: "跑步", swimming: "游泳", yoga: "瑜伽／伸展", activity: "活动", durationMinutes: "时长（分钟）", kcalBurned: "预计消耗（kcal）", exerciseEstimate: "运动手表可能提供更个人化的估算。运动热量仅供参考。", activitiesRecorded: "已记录的运动", noExercise: "此日期尚未记录运动。", minutes: "分钟", exerciseGuide: "三个简单步骤记录运动", chooseActivity: "1. 选择运动", chooseDuration: "2. 选择时长", checkEstimate: "3. 检查并保存", todayMovement: "今日运动", caloriesBurnedToday: "今日预计消耗千卡", customActivity: "或输入其他运动",
     daysMeals: "有饮食记录的天数", weeklyActivity: "每周活动", goalConsistency: "目标达成情况", last7Days: "最近7天", barsCalories: "柱状图显示已记录的卡路里；没有记录的日期会留空。",
     profileGoals: "个人资料与目标", Name: "姓名", Age: "年龄", sexEstimate: "用于健康估算的性别", Female: "女性", Male: "男性", heightCm: "身高（cm）", currentWeight: "当前体重（kg）", goalWeight: "目标体重（kg）", Goal: "目标", loseWeight: "减重", maintainWeight: "维持体重", gainWeight: "增重", Activity: "活动量", mostlySitting: "大部分时间久坐", weeklyExercise: "每周有一些运动", veryActive: "非常活跃", youthGoal: "目标：支持健康成长并建立可持续的习惯。", yourRecords: "你的记录", backupAdvice: "清除浏览器数据或更换设备前，请先下载备份。", exportBackup: "导出备份", deleteData: "删除所有数据", deleteConfirm: "确定删除此设备上的所有Fit+记录吗？此操作无法撤销。",
     paymentRequired: "使用Plus+需要付款", paymentCost: "Plus+每月RM14.90，只有在付款成功并经过验证后才会启用。", paymentsUnavailable: "目前暂未开放付款。", paymentNote: "Fit+拥有者仍需连接Stripe付款。你尚未被扣款，普通版仍然有效。", continueNormal: "继续使用普通版 — 免费",
@@ -1925,43 +1925,77 @@ function ExerciseView({
   language: Language;
   remove: (id: string) => void;
 }) {
+  const totalMinutes = exercises.reduce((sum, exercise) => sum + exercise.minutes, 0);
+  const totalCalories = exercises.reduce((sum, exercise) => sum + exercise.calories, 0);
+  const activities = [
+    { key: "briskWalk", icon: "🚶" },
+    { key: "running", icon: "🏃" },
+    { key: "cycling", icon: "🚴" },
+    { key: "swimming", icon: "🏊" },
+    { key: "homeStrength", icon: "💪" },
+    { key: "yoga", icon: "🧘" },
+  ];
+  const durations = [10, 20, 30, 45, 60];
   return (
-    <div className="grid w-full min-w-0 gap-5 xl:grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)]">
-      <article className="rounded-[28px] border border-[#dfe7e2] bg-white p-6">
-        <h2 className="text-xl font-extrabold">{tr(language,"recordExercise")}</h2>
-        <div className="mt-4 grid gap-2 sm:grid-cols-3 xl:grid-cols-1">
-          {[
-            [tr(language,"briskWalk"), 20],
-            [tr(language,"homeStrength"), 15],
-            [tr(language,"cycling"), 30],
-          ].map(([label, duration]) => (
+    <div className="w-full min-w-0 space-y-5">
+      <article className="overflow-hidden rounded-[28px] bg-gradient-to-br from-[#123f2d] via-[#176044] to-[#24845a] p-5 text-white shadow-[0_18px_45px_rgba(18,72,49,.2)] sm:p-7">
+        <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+          <div>
+            <div className="flex items-center gap-2 text-sm font-black uppercase tracking-[.14em] text-[#bcebd0]"><Dumbbell size={18}/>{tr(language,"Exercise")}</div>
+            <h2 className="mt-2 text-2xl font-black sm:text-3xl">{tr(language,"exerciseGuide")}</h2>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:min-w-[310px]">
+            <div className="rounded-2xl bg-white/10 p-3 backdrop-blur"><p className="text-2xl font-black">{totalMinutes}</p><p className="text-xs text-[#d5eadf]">{tr(language,"activeMinutes")}</p></div>
+            <div className="rounded-2xl bg-white/10 p-3 backdrop-blur"><p className="text-2xl font-black">{totalCalories}</p><p className="text-xs text-[#d5eadf]">{tr(language,"caloriesBurnedToday")}</p></div>
+          </div>
+        </div>
+      </article>
+      <div className="grid w-full min-w-0 gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)]">
+      <article className="rounded-[28px] border border-[#dfe7e2] bg-white p-5 shadow-[0_12px_35px_rgba(27,69,50,.05)] sm:p-6">
+        <h2 className="text-lg font-extrabold text-[#174b35]">{tr(language,"chooseActivity")}</h2>
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {activities.map(({ key, icon }) => {
+            const label = tr(language, key);
+            const selected = name === label;
+            return (
             <button
-              key={String(label)}
+              key={key}
               type="button"
               onClick={() => {
-                setName(String(label));
-                setMinutes(Number(duration));
-                setBurned(estimateExerciseCalories(String(label), Number(duration), weight));
+                setName(label);
+                setBurned(estimateExerciseCalories(label, minutes, weight));
               }}
-              className="flex items-center justify-between rounded-xl bg-[#f4f7f5] px-4 py-3 text-left text-sm font-bold hover:bg-[#e3efe8]"
+              aria-pressed={selected}
+              className={`rounded-2xl border p-3 text-left transition hover:-translate-y-0.5 ${selected ? "border-[#176044] bg-[#176044] text-white shadow-md" : "border-[#dfe7e2] bg-[#f5f9f6] text-[#244c38] hover:bg-[#e7f4ec]"}`}
             >
-              <span>{String(label)}</span>
-              <span className="text-xs font-semibold text-[#718078]">{Number(duration)} min</span>
+              <span className="text-xl" aria-hidden="true">{icon}</span>
+              <span className="mt-2 block text-sm font-black">{label}</span>
             </button>
-          ))}
+          )})}
         </div>
         <form onSubmit={submit} className="mt-5 space-y-4">
+          <p className="text-xs font-bold uppercase tracking-[.12em] text-[#718078]">{tr(language,"customActivity")}</p>
           <Input
             label={tr(language,"activity")}
             value={name}
             on={setName}
             placeholder={tr(language,"briskWalk")}
           />
+          <div>
+            <p className="text-sm font-extrabold text-[#174b35]">{tr(language,"chooseDuration")}</p>
+            <div className="mt-2 grid grid-cols-5 gap-2">
+              {durations.map((duration) => <button key={duration} type="button" onClick={() => setMinutes(duration)} aria-pressed={minutes === duration} className={`rounded-xl py-2.5 text-sm font-black ${minutes === duration ? "bg-[#f0c868] text-[#3e3213] shadow-sm" : "bg-[#f1f5f2] text-[#52655a] hover:bg-[#e3efe8]"}`}>{duration}</button>)}
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <Num label={tr(language,"durationMinutes")} value={minutes} on={setMinutes} />
             <Num label={tr(language,"kcalBurned")} value={burned} on={setBurned} readOnly />
           </div>
-          <button className="w-full rounded-xl bg-[#153f2d] px-4 py-3 font-bold text-white">
+          <div className="rounded-2xl border border-[#f0d9a5] bg-[#fff8e8] p-4">
+            <p className="text-xs font-black uppercase tracking-[.12em] text-[#9a672d]">{tr(language,"checkEstimate")}</p>
+            <div className="mt-2 flex items-end justify-between gap-3"><div><strong className="text-3xl text-[#174b35]">{burned}</strong><span className="ml-1 text-sm font-bold text-[#627168]">kcal</span></div><span className="text-right text-xs text-[#75684e]">{minutes} {tr(language,"minutes")} · {weight} kg</span></div>
+          </div>
+          <button disabled={!name.trim() || minutes <= 0} className="w-full rounded-xl bg-[#153f2d] px-4 py-3 font-bold text-white shadow-lg shadow-[#153f2d]/10 transition hover:bg-[#20533d] disabled:cursor-not-allowed disabled:opacity-45">
             {tr(language,"addExercise")}
           </button>
         </form>
@@ -1984,6 +2018,7 @@ function ExerciseView({
           />
         ))}
       </Log>
+      </div>
     </div>
   );
 }
