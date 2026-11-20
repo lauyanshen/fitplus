@@ -73,6 +73,17 @@ const answerSchema = {
   properties: { answer: { type: "string" } },
   required: ["answer"],
 };
+const dailyPlanSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    summary: { type: "string" },
+    meals: { type: "array", items: { type: "string" }, minItems: 3, maxItems: 4 },
+    exercise: { type: "array", items: { type: "string" }, minItems: 1, maxItems: 3 },
+    focus: { type: "string" },
+  },
+  required: ["summary", "meals", "exercise", "focus"],
+};
 function normaliseFoodResult(result: unknown) {
   if (!result || typeof result !== "object" || !Array.isArray((result as { items?: unknown[] }).items)) return result;
   const number = (value: unknown) => {
@@ -158,7 +169,7 @@ async function handlePost(req: NextRequest, body: Record<string, unknown>) {
           : body?.language === "zh"
             ? "Simplified Chinese"
             : "English";
-    if (kind !== "calories" && kind !== "food_photo" && kind !== "assistant")
+    if (kind !== "calories" && kind !== "food_photo" && kind !== "assistant" && kind !== "daily_plan")
       return NextResponse.json({ error: "Invalid request." }, { status: 400 });
     let instructions = "",
       input: unknown = "",
@@ -199,6 +210,11 @@ async function handlePost(req: NextRequest, body: Record<string, unknown>) {
           ],
         },
       ];
+    } else if (kind === "daily_plan") {
+      schema = dailyPlanSchema;
+      schemaName = "daily_health_plan";
+      instructions = `You are Fit+, a cautious daily wellness planner. Create a practical plan using the supplied date, age, BMI screening category, current weight, energy level, foods already logged and exercise already completed. Make each day different by adapting to the date and current records. Suggest 3–4 specific balanced meal ideas and 1–3 realistic exercise ideas with duration and intensity. Keep every item below 22 words. Under age 20: never prescribe dieting, calorie deficits, weight-loss targets, fasting or adult BMI treatment. Support healthy growth, family meals, sleep, school routine and enjoyable activity, and recommend parent/healthcare review when BMI-for-age is outside the healthy range. Adults outside the healthy BMI range may receive gradual, non-extreme guidance. Never diagnose. Reply only in ${language}.`;
+      input = JSON.stringify(body.context || {});
     } else {
       const question = String(body.question || "")
         .trim()
@@ -242,7 +258,7 @@ async function handlePost(req: NextRequest, body: Record<string, unknown>) {
         },
         // Each food carries macros, sugars, groups, and guidance. Twelve foods
         // cannot reliably fit in the previous 1,200-token response budget.
-        max_output_tokens: kind === "calories" || kind === "food_photo" ? 9000 : 500,
+        max_output_tokens: kind === "calories" || kind === "food_photo" ? 9000 : kind === "daily_plan" ? 900 : 500,
       }),
     });
     const raw = await response.text();
@@ -307,7 +323,7 @@ async function handlePost(req: NextRequest, body: Record<string, unknown>) {
     }
     try {
       const parsed = JSON.parse(text);
-      return NextResponse.json({ result: kind === "assistant" ? parsed : normaliseFoodResult(parsed) });
+      return NextResponse.json({ result: kind === "assistant" || kind === "daily_plan" ? parsed : normaliseFoodResult(parsed) });
     } catch {
       console.error("OpenAI output text was not valid JSON");
       return NextResponse.json(

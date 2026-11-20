@@ -108,7 +108,7 @@ const words: Record<Language, Record<string, string>> = {
     thisWeek: "This week", fiveDays: "Show up on five days. Consistency beats perfection.", smarterGuidance: "Guidance for your real day", useDailyContext: "Ask questions using today’s meals, movement, mood and goals.", chatPlus: "Ask Assistant",
     recordExercise: "Record exercise", briskWalk: "Brisk walk", homeStrength: "Home strength", cycling: "Cycling", running: "Running", swimming: "Swimming", yoga: "Yoga / stretching", activity: "Activity", durationMinutes: "Duration (minutes)", kcalBurned: "Estimated kcal burned", exerciseEstimate: "Fitness watches may provide a more personal estimate. Exercise calories are approximate.", activitiesRecorded: "Activities recorded", noExercise: "No exercise recorded for this date.", minutes: "minutes", exerciseGuide: "Log movement in 3 easy steps", chooseActivity: "1. Choose an activity", chooseDuration: "2. Choose the duration", checkEstimate: "3. Check and save", todayMovement: "Today’s movement", caloriesBurnedToday: "estimated kcal burned today", customActivity: "Or type another activity",
     daysMeals: "Days with meals", weeklyActivity: "Weekly activity", goalConsistency: "Goal consistency", last7Days: "Last 7 days", barsCalories: "Bars show calories recorded. Missing days appear blank.",
-    profileGoals: "Profile and goals", Name: "Name", Age: "Age", sexEstimate: "Sex used for health estimates", Female: "Female", Male: "Male", heightCm: "Height (cm)", currentWeight: "Current weight (kg)", goalWeight: "Goal weight (kg)", Goal: "Goal", loseWeight: "Lose weight", maintainWeight: "Maintain weight", gainWeight: "Gain weight", Activity: "Activity", mostlySitting: "Mostly sitting", weeklyExercise: "Some weekly exercise", veryActive: "Very active", youthGoal: "Goal: Support healthy growth and build sustainable habits.", yourRecords: "Your records", backupAdvice: "Download a backup before clearing browser data or changing devices.", exportBackup: "Export backup", deleteData: "Delete all data", deleteConfirm: "Delete every Fit+ record on this device? This cannot be undone.",
+    profileGoals: "Profile and goals", Name: "Name", Age: "Age", sexEstimate: "Gender", Female: "Female", Male: "Male", heightCm: "Height (cm)", currentWeight: "Current weight (kg)", goalWeight: "Goal weight (kg)", Goal: "Goal", loseWeight: "Lose weight", maintainWeight: "Maintain weight", gainWeight: "Gain weight", Activity: "Activity", mostlySitting: "Mostly sitting", weeklyExercise: "Some weekly exercise", veryActive: "Very active", youthGoal: "Goal: Support healthy growth and build sustainable habits.", yourRecords: "Your records", backupAdvice: "Download a backup before clearing browser data or changing devices.", exportBackup: "Export backup", deleteData: "Delete all data", deleteConfirm: "Delete every Fit+ record on this device? This cannot be undone.",
     paymentRequired: "Payment required for Plus+", paymentCost: "Plus+ costs RM14.90 per month. It only unlocks after a successful, verified payment.", paymentsUnavailable: "Payments are not available yet.", paymentNote: "Fit+’s owner still needs to connect Stripe checkout. You have not been charged, and your Normal plan remains active.", continueNormal: "Continue with Normal — Free",
     coachCompanion: "Coach Companion", currentPlan: "Current plan", normalAssistant: "Normal Assistant", Free: "Free", bestValue: "BEST VALUE", perMonth: "/month", annualPrice: "Or RM149/year · save RM29.80", normalBenefits: "10 health questions per day|Short answers up to about 100 words|Uses today’s health records|Standard AI model", plusBenefits: "50 health questions per day|Longer answers up to about 350 words|More capable premium AI model|Response speed varies with demand", upgradePlus: "Upgrade to Plus+ · RM14.90/month", checkoutPending: "Payment required. Checkout is not connected yet.", premiumCoach: "Premium AI health coach", freeCoach: "Free AI health coach", questionsLeft: "Questions remaining today", generalGuidance: "General guidance only. Seek professional care for medical symptoms, eating disorders, pregnancy, medicines or treatment.",
     childTeen: "Child or teen", olderAdult: "Older adult", adult: "Adult", youthGuidance: "Children and teens grow at different rates. Fit+ tracks balanced meals and activity, but does not set weight-loss or calorie-deficit targets. Review growth with a parent or healthcare professional.", olderGuidance: "Prioritise regular meals, protein, hydration, balance and strength. Weight changes should be gradual, especially with medical conditions or unplanned weight loss.", adultGuidance: "Use repeatable meal and activity habits. Daily energy needs are estimates and should be adjusted using your longer-term progress.",
@@ -329,12 +329,16 @@ type Exercise = {
   minutes: number;
   calories: number;
 };
+type EnergyCheckIn = { energy: number; mood?: "low" | "okay" | "great" };
+type DailyPlan = { summary: string; meals: string[]; exercise: string[]; focus: string };
 type Store = {
   profile: Profile;
   meals: Meal[];
   exercises: Exercise[];
   water: Record<string, number>;
-  checkIns?: Record<string, { mood: "low" | "okay" | "great"; energy: number }>;
+  checkIns?: Record<string, EnergyCheckIn>;
+  weights?: Record<string, number>;
+  plans?: Record<string, DailyPlan>;
   started: boolean;
 };
 type FoodEstimate = Omit<Meal, "id" | "date"> & {
@@ -445,6 +449,8 @@ const initial: Store = {
   exercises: [],
   water: {},
   checkIns: {},
+  weights: {},
+  plans: {},
   started: false,
 };
 const nav = [
@@ -519,6 +525,8 @@ export default function Home() {
     [reply, setReply] = useState(""),
     [chatLoading, setChatLoading] = useState(false),
     [chatError, setChatError] = useState("");
+  const [planLoading, setPlanLoading] = useState(false),
+    [planError, setPlanError] = useState("");
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("presentation") === "week") {
       const week = createPresentationWeek();
@@ -538,7 +546,7 @@ export default function Home() {
       if (x) {
         const saved = JSON.parse(x) as Store;
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        setStore({ ...initial, ...saved, profile: { ...initial.profile, ...(saved.profile || {}) }, checkIns: saved.checkIns || {} });
+        setStore({ ...initial, ...saved, profile: { ...initial.profile, ...(saved.profile || {}) }, checkIns: saved.checkIns || {}, weights: saved.weights || {}, plans: saved.plans || {} });
       }
       const savedLanguage = localStorage.getItem("fitplus-language");
       if (
@@ -598,7 +606,8 @@ export default function Home() {
     plan = agePlan(p),
     dayMeals = store.meals.filter((m) => m.date === date),
     dayExercises = store.exercises.filter((e) => e.date === date);
-  const bmi = p.weight / (p.height / 100) ** 2,
+  const currentWeight = store.weights?.[date] || p.weight,
+    bmi = currentWeight / (p.height / 100) ** 2,
     adultCategory =
       bmi < 18.5
         ? "Underweight"
@@ -615,8 +624,8 @@ export default function Home() {
           : adultCategory;
   const bmr =
       p.sex === "male"
-        ? 10 * p.weight + 6.25 * p.height - 5 * p.age + 5
-        : 10 * p.weight + 6.25 * p.height - 5 * p.age - 161,
+        ? 10 * currentWeight + 6.25 * p.height - 5 * p.age + 5
+        : 10 * currentWeight + 6.25 * p.height - 5 * p.age - 161,
     factor = { low: 1.2, moderate: 1.45, high: 1.65 }[p.activity],
     maintenance = Math.round(bmr * factor),
     adjustment =
@@ -633,7 +642,7 @@ export default function Home() {
             : p.goal === "gain"
               ? 300
               : 0,
-    target = plan.showCalories ? maintenance + adjustment : 0;
+    target = plan.showCalories ? maintenance + adjustment : maintenance;
   const consumed = dayMeals.reduce((s, m) => s + m.calories, 0),
     exerciseCals = dayExercises.reduce((s, e) => s + e.calories, 0),
     activeMinutes = dayExercises.reduce((s, e) => s + e.minutes, 0),
@@ -827,6 +836,39 @@ export default function Home() {
       setChatLoading(false);
     }
   }
+  async function generateDailyPlan() {
+    setPlanLoading(true);
+    setPlanError("");
+    try {
+      const response = await requestFitAI({
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "daily_plan", language, context: {
+          date, profile: { ...p, weight: currentWeight }, bmi: Number(bmi.toFixed(1)), category,
+          energy: checkInToday?.energy || null, calorieGuide: target, consumed, activeMinutes, exerciseCals,
+          meals: dayMeals.map(({ name, portion, calories }) => ({ name, portion, calories })),
+          exercises: dayExercises.map(({ name, minutes, calories }) => ({ name, minutes, calories })),
+        } }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not create today’s plan.");
+      setStore((s) => ({ ...s, plans: { ...s.plans, [date]: data.result } }));
+    } catch (error) {
+      setPlanError(error instanceof Error ? error.message : "Could not create today’s plan.");
+    } finally {
+      setPlanLoading(false);
+    }
+  }
+  useEffect(() => {
+    if (!ready || !store.started || store.plans?.[date] || planLoading) return;
+    if (!category.toLowerCase().includes("healthy")) void generateDailyPlan();
+    // Generate once after setup when the BMI screening result is outside the healthy range.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, store.started, store.plans, date, category]);
+  function saveDailyWeight(value: number) {
+    if (!Number.isFinite(value) || value < 20 || value > 350) return;
+    setStore((s) => ({ ...s, profile: { ...s.profile, weight: value }, weights: { ...s.weights, [date]: value } }));
+  }
   function exportData() {
     const b = new Blob([JSON.stringify(store, null, 2)], {
         type: "application/json",
@@ -932,6 +974,12 @@ export default function Home() {
               schoolDay={p.schoolDay}
               teenFocus={p.teenFocus}
               assistantUsed={assistantUsage.date === date && assistantUsage.count > 0}
+              dailyPlan={store.plans?.[date]}
+              planLoading={planLoading}
+              planError={planError}
+              generatePlan={generateDailyPlan}
+              currentWeight={currentWeight}
+              saveWeight={saveDailyWeight}
             />
           )}{" "}
           {active === "Meals" && (
@@ -954,6 +1002,9 @@ export default function Home() {
               addedSugar={addedSugar}
               freeSugar={freeSugar}
               sugarLimit={sugarLimit}
+              consumed={consumed}
+              calorieGuide={target}
+              teen={p.age < 20}
               language={language}
               remove={(id) =>
                 setStore((s) => ({
@@ -1133,7 +1184,7 @@ function Onboarding({
             />
             <Num label="Age" value={profile.age} on={(v) => update("age", v)} />
             <Select
-              label="Sex used for health estimates"
+              label="Gender"
               value={profile.sex}
               on={(v) => update("sex", v)}
               options={[
@@ -1215,7 +1266,7 @@ function Onboarding({
     </main>
   );
 }
-function QuickStartGuide({ mealLogged, activeMinutes, checkIn, assistantUsed, go, language }: { mealLogged: boolean; activeMinutes: number; checkIn?: { mood: "low" | "okay" | "great"; energy: number }; assistantUsed: boolean; go: (s: string) => void; language: Language }) {
+function QuickStartGuide({ mealLogged, activeMinutes, checkIn, assistantUsed, go, language }: { mealLogged: boolean; activeMinutes: number; checkIn?: EnergyCheckIn; assistantUsed: boolean; go: (s: string) => void; language: Language }) {
   const steps = [
     { icon: Apple, title: tr(language, "stepMealTitle"), body: tr(language, "stepMealBody"), done: mealLogged, action: () => go("Meals") },
     { icon: Dumbbell, title: tr(language, "stepMoveTitle"), body: tr(language, "stepMoveBody"), done: activeMinutes > 0, action: () => go("Exercise") },
@@ -1234,17 +1285,22 @@ function QuickStartGuide({ mealLogged, activeMinutes, checkIn, assistantUsed, go
   </article>;
 }
 
-function HealthStatusNotice({ bmi, category, teen, go, language }: { bmi: number; category: string; teen: boolean; go: (s: string) => void; language: Language }) {
+function HealthStatusNotice({ bmi, category, teen, language }: { bmi: number; category: string; teen: boolean; language: Language }) {
   const lower = category.toLowerCase();
   const isHealthy = lower.includes("healthy");
   const isHigher = lower.includes("overweight") || lower.includes("obes");
   const tone = isHealthy ? "border-[#bfe4cf] bg-[#ecfbf2] text-[#174b35]" : isHigher ? "border-[#f1d4a4] bg-[#fff7e6] text-[#70491d]" : "border-[#cddff1] bg-[#f0f7ff] text-[#244c70]";
   const iconTone = isHealthy ? "bg-[#197c4a] text-white" : isHigher ? "bg-[#f2b84f] text-[#5c3a12]" : "bg-[#6c9bc5] text-white";
-  return <article className={`flex flex-col gap-4 rounded-[26px] border p-5 shadow-[0_12px_32px_rgba(30,65,48,.05)] sm:flex-row sm:items-center sm:p-6 ${tone}`}>
-    <div className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl ${iconTone}`}><HeartPulse size={27}/></div>
-    <div className="min-w-0 flex-1"><p className="text-xs font-black uppercase tracking-[.14em] opacity-70">{tr(language,"healthNotice")}</p><div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1"><h2 className="text-2xl font-black">{category}</h2><span className="rounded-full bg-white/70 px-2.5 py-1 text-xs font-black">BMI {bmi.toFixed(1)}</span></div><p className="mt-2 text-sm leading-6 opacity-90">{tr(language,isHealthy?"healthHealthy":isHigher?"healthHigher":"healthLower")}</p><p className="mt-1 text-xs leading-5 opacity-70">{tr(language,teen?"bmiAgeNotice":"adultBmiNotice")}</p></div>
-    <button onClick={()=>go("Progress")} className="shrink-0 rounded-xl bg-white px-4 py-3 text-sm font-black shadow-sm transition hover:-translate-y-0.5">{tr(language,"viewProgress")}</button>
+  return <article className={`flex gap-3 rounded-2xl border p-3.5 ${tone}`}>
+    <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${iconTone}`}><HeartPulse size={20}/></div>
+    <div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><strong>{category}</strong><span className="rounded-full bg-white/70 px-2 py-0.5 text-xs font-black">BMI {bmi.toFixed(1)}</span></div><p className="mt-1 text-xs leading-5 opacity-80">{tr(language,teen?"bmiAgeNotice":"adultBmiNotice")}</p></div>
   </article>;
+}
+
+function DailyWeightCard({ value, save }: { value: number; save: (value: number) => void }) {
+  const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
+  return <article className="rounded-[22px] border border-[#d9e7df] bg-[#eaf6f0] p-5"><p className="text-xs font-black uppercase tracking-[.14em] text-[#177147]">Daily weight</p><div className="mt-2 flex items-end gap-2"><input type="number" min="20" max="350" step="0.1" value={draft} onChange={(event)=>setDraft(Number(event.target.value))} className="min-w-0 w-full rounded-xl border border-[#cfe0d7] bg-white px-3 py-2 text-2xl font-black outline-none"/><span className="pb-2 text-sm font-bold text-[#5d7066]">kg</span></div><button onClick={()=>draft>0&&save(draft)} className="mt-3 w-full rounded-xl bg-[#176044] px-3 py-2.5 text-sm font-black text-white">Save today’s weight</button><p className="mt-2 text-xs leading-5 text-[#66776e]">Saved by date and used for today’s BMI, exercise and AI plan.</p></article>;
 }
 
 function TeenMissionBoard({ addedSugar, sugarLimit, activeMinutes, water, addWater, go, language, schoolDay, teenFocus, totalSugar, mealLogged }: { addedSugar: number; sugarLimit: number; activeMinutes: number; water: number; addWater: () => void; go: (s: string) => void; language: Language; schoolDay: Profile["schoolDay"]; teenFocus: Profile["teenFocus"]; totalSugar: number; mealLogged: boolean }) {
@@ -1262,48 +1318,36 @@ function TeenMissionBoard({ addedSugar, sugarLimit, activeMinutes, water, addWat
   </article>;
 }
 
-function CoachOverview(props: Parameters<typeof Overview>[0] & { language: Language; teen: boolean; schoolDay: Profile["schoolDay"]; teenFocus: Profile["teenFocus"]; totalSugar: number; assistantUsed: boolean }) {
-  const { bmi, category, addedSugar, totalSugar, sugarLimit, dailyScore, streak, weekActivity, checkIn, setCheckIn, mealLogged, activeMinutes, water, addWater, go, target, language, teen, schoolDay, teenFocus, assistantUsed } = props;
-  const activityTarget = target === 0 ? 60 : 30;
+function CoachOverview(props: Parameters<typeof Overview>[0] & { language: Language; teen: boolean; schoolDay: Profile["schoolDay"]; teenFocus: Profile["teenFocus"]; totalSugar: number; assistantUsed: boolean; dailyPlan?: DailyPlan; planLoading: boolean; planError: string; generatePlan: () => void; currentWeight: number; saveWeight: (value: number) => void }) {
+  const { bmi, category, consumed, target, addedSugar, sugarLimit, exerciseCals, activeMinutes, streak, weekActivity, checkIn, setCheckIn, mealLogged, water, addWater, go, language, teen, dailyPlan, planLoading, planError, generatePlan, currentWeight, saveWeight } = props;
+  const activityTarget = teen ? 60 : 30;
   const completed = [mealLogged, activeMinutes >= activityTarget, !!checkIn].filter(Boolean).length;
-  const items = [
-    { title: tr(language,mealLogged ? "mealLogged" : "logFirstMeal"), detail: tr(language,mealLogged ? "nutritionUpdated" : "nutritionGuidance"), action: tr(language,mealLogged ? "viewMeals" : "logMeal"), target: "Meals", image: "/assets/fitplus/meal-bowl.webp", done: mealLogged },
-    { title: activeMinutes ? `${activeMinutes} ${tr(language,"activeMinutes")}` : tr(language,"moveBody"), detail: tr(language,activeMinutes >= activityTarget ? "movementComplete" : "movementCounts"), action: tr(language,activeMinutes ? "viewActivity" : "addExercise"), target: "Exercise", image: "/assets/fitplus/running-shoes.webp", done: activeMinutes >= activityTarget },
-    { title: tr(language,checkIn ? "wellbeingDone" : "wellbeingCheck"), detail: checkIn ? `${tr(language,"mood")}: ${tr(language,checkIn.mood)}, ${tr(language,"energy")}: ${checkIn.energy}/5.` : tr(language,"logMoodEnergy"), action: tr(language,checkIn ? "update" : "logMood"), target: "checkin", image: "/assets/fitplus/wellbeing-plant.webp", done: !!checkIn },
+  const actions = [
+    { icon: Utensils, title: mealLogged ? "Meal recorded" : "Record a balanced meal", detail: mealLogged ? "Today’s nutrition totals are updated." : "Add your food for calorie and sugar guidance.", value: mealLogged ? "Done" : "Not logged", action: mealLogged ? "View meals" : "Log meal", done: mealLogged, run: () => go("Meals") },
+    { icon: Dumbbell, title: "Move your body", detail: teen ? "Aim for enjoyable movement across the day." : "Walking, cycling or a workout all count.", value: `${activeMinutes} / ${activityTarget} min`, action: activeMinutes ? "View activity" : "Start workout", done: activeMinutes >= activityTarget, run: () => go("Exercise") },
+    { icon: Zap, title: "Energy check-in", detail: "Rate your energy from 1 to 5 so Fit+ can adapt.", value: checkIn ? `${checkIn.energy} / 5` : "Not logged", action: checkIn ? "Update" : "Check in now", done: !!checkIn, run: () => document.getElementById("energy-checkin")?.scrollIntoView({ behavior: "smooth" }) },
   ];
-  return <div className="w-full min-w-0 space-y-4">
-    <QuickStartGuide mealLogged={mealLogged} activeMinutes={activeMinutes} checkIn={checkIn} assistantUsed={assistantUsed} go={go} language={language} />
-    <HealthStatusNotice bmi={bmi} category={category} teen={teen} go={go} language={language} />
-    <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1.62fr)_minmax(300px,.78fr)]">
-    <div className="space-y-4">
-      {teen && <TeenMissionBoard addedSugar={addedSugar} sugarLimit={sugarLimit} activeMinutes={activeMinutes} water={water} addWater={addWater} go={go} language={language} schoolDay={schoolDay} teenFocus={teenFocus} totalSugar={totalSugar} mealLogged={mealLogged} />}
-      <article className="relative min-h-[244px] overflow-hidden rounded-[22px] border border-[#dce9e2] bg-[#eaf8f0] shadow-[0_14px_40px_rgba(24,72,51,.07)] sm:rounded-[26px]">
-        <img src={fitAsset("/assets/fitplus/plus-coach.webp")} alt="Fit+ AI wellness coach" className="absolute inset-y-0 left-0 hidden h-full w-[46%] object-cover object-left sm:block" />
-        <div className="relative ml-auto w-full p-5 sm:w-[58%] sm:p-7">
-          <div className="flex items-center justify-between gap-2"><div className="flex min-w-0 flex-wrap items-center gap-2 text-sm font-extrabold text-[#19613f]"><Bot size={18}/> {tr(language,"normalAssistant")}</div><button aria-label="More coach actions" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/65 text-[#416354]"><MoreHorizontal size={20}/></button></div>
-          <h2 className="mt-5 text-[1.35rem] font-black tracking-[-.02em] sm:text-2xl">{tr(language,"goodMorning")}</h2>
-          <p className="mt-2 max-w-lg text-sm leading-6 text-[#4e675b]">{tr(language,"healthierChoices")}</p>
-          <div className="mt-5 flex flex-wrap gap-2"><button onClick={()=>go("Assistant")} className="rounded-xl bg-white px-4 py-2.5 text-sm font-extrabold text-[#174b35] shadow-sm transition hover:-translate-y-0.5"><MessageCircle className="mr-1.5 inline" size={16}/>{tr(language,"askAssistant")}</button><button onClick={()=>go("Meals")} className="rounded-xl bg-white/80 px-4 py-2.5 text-sm font-bold text-[#174b35] hover:bg-white">{tr(language,"getMealIdeas")}</button></div>
-        </div>
+  const recommendation = dailyPlan?.exercise[0] || dailyPlan?.focus || "Record your energy and meals to receive a personalised suggestion.";
+  const summaries = [
+    { icon: Flame, label: "Streak", value: `${streak} ${streak === 1 ? "day" : "days"}`, progress: Math.min(100, streak / 5 * 100) },
+    { icon: Apple, label: teen ? "Energy" : "Calories", value: `${Math.round(consumed)} / ${Math.round(target)} kcal`, progress: target ? Math.min(100, consumed / target * 100) : 0 },
+    { icon: Sparkles, label: "Sugar", value: `${Math.round(addedSugar)} / ${sugarLimit} g`, progress: Math.min(100, addedSugar / sugarLimit * 100) },
+    { icon: Dumbbell, label: "Exercise", value: `${Math.round(exerciseCals)} kcal`, progress: Math.min(100, activeMinutes / activityTarget * 100) },
+    { icon: Droplets, label: "Water", value: `${water} / 8 glasses`, progress: Math.min(100, water / 8 * 100) },
+    { icon: CalendarDays, label: "This week", value: `${weekActivity.filter(Boolean).length} / 5 days`, progress: Math.min(100, weekActivity.filter(Boolean).length / 5 * 100) },
+  ];
+  return <div className="w-full min-w-0 space-y-5">
+    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#ead9b4] bg-[#fff7e6] px-4 py-3 text-sm text-[#68491e]"><HeartPulse size={19}/><strong>{category}</strong><span className="rounded-full bg-white/80 px-2 py-1 text-xs font-black">BMI {bmi.toFixed(1)}</span><span className="text-xs opacity-80">{teen ? "BMI-for-age screening—not a diagnosis." : "A screening measure—not a diagnosis."}</span></div>
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_230px]">
+      <article className="overflow-hidden rounded-[26px] border border-[#bfdfce] bg-[#eef9f3] p-5 sm:p-7">
+        <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-black uppercase tracking-[.18em] text-[#177147]">Today’s plan</p><h2 className="mt-2 text-2xl font-black tracking-[-.03em] sm:text-3xl">Complete 3 actions today</h2></div><p className="text-sm font-black text-[#174b35]">{completed} of 3 completed</p></div>
+        <div className="mt-5 overflow-hidden rounded-2xl bg-white/80 px-4 sm:px-5">{actions.map(({icon:Icon,...item})=><button key={item.title} onClick={item.run} className="grid w-full grid-cols-[42px_minmax(0,1fr)] items-center gap-3 border-b border-[#dcebe3] py-4 text-left last:border-0 sm:grid-cols-[46px_minmax(0,1fr)_110px_130px]"><span className={`grid h-11 w-11 place-items-center rounded-xl ${item.done?"bg-[#dcf3e6] text-[#147447]":"bg-[#fff3dc] text-[#d06c27]"}`}><Icon size={21}/></span><span className="min-w-0"><strong className="block text-base">{item.title}</strong><span className="mt-0.5 block text-xs leading-5 text-[#64756c]">{item.detail}</span></span><span className="hidden text-sm font-bold text-[#53675d] sm:block">{item.done&&<CheckCircle2 className="mr-1 inline text-[#1b7a4b]" size={17}/>} {item.value}</span><span className={`hidden rounded-xl px-3 py-2 text-center text-sm font-black sm:block ${item.done?"border border-[#a9d7bd] text-[#176044]":"bg-[#176044] text-white"}`}>{item.action}</span></button>)}</div>
       </article>
-      <article className="rounded-[22px] border border-[#e0e9e4] bg-white p-4 shadow-[0_12px_35px_rgba(27,69,50,.05)] sm:rounded-[26px] sm:p-6">
-        <div className="flex items-center justify-between gap-4 border-b border-[#edf1ef] pb-4"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-[#ddf3e6] text-[#177147]"><CalendarDays size={19}/></div><div><h2 className="text-xl font-extrabold">{tr(language,"planToday")}</h2><p className="text-sm text-[#75827c]">{completed} {tr(language,"stepsComplete")}</p></div></div><span className="hidden rounded-full bg-[#eef6f2] px-3 py-1.5 text-xs font-extrabold text-[#176044] sm:inline">{dailyScore}% {tr(language,"momentum")}</span></div>
-        {items.map((item,index)=><button key={item.title} onClick={()=>item.target==="checkin"?document.getElementById("wellbeing-checkin")?.scrollIntoView({behavior:"smooth"}):go(item.target)} className="grid w-full grid-cols-[34px_minmax(0,1fr)_48px] items-center gap-2 border-b border-[#eef2f0] py-4 text-left last:border-0 sm:grid-cols-[38px_1fr_auto] sm:gap-3"><div className={`grid h-8 w-8 place-items-center rounded-full text-sm font-black ${item.done?"bg-[#1b7a4b] text-white":"bg-[#e4f2ea] text-[#176044]"}`}>{item.done?<CheckCircle2 size={17}/>:index+1}</div><div className="min-w-0"><p className="font-extrabold">{item.title}</p><p className="mt-0.5 text-xs leading-5 text-[#75817b]">{item.detail}</p></div><div className="flex items-center gap-2"><span className="hidden rounded-xl border border-[#d9e5df] px-3 py-2 text-xs font-extrabold text-[#174b35] hover:bg-[#eff7f3] sm:block">{item.action} <ChevronRight className="inline" size={14}/></span><img src={fitAsset(item.image)} alt="" className="h-12 w-12 rounded-xl object-cover sm:h-14 sm:w-16"/></div></button>)}
-      </article>
-      <article id="wellbeing-checkin" className="rounded-[26px] border border-[#e0e9e4] bg-white p-5 shadow-[0_12px_35px_rgba(27,69,50,.05)] sm:p-6">
-        <div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-[#ddf3e6] text-[#177147]"><Smile size={20}/></div><div><h2 className="text-lg font-extrabold">{tr(language,"feelingToday")}</h2><p className="text-xs text-[#75817b]">{tr(language,"checkinHelp")}</p></div></div>
-        <div className="mt-4 grid gap-4 lg:grid-cols-2"><div><p className="text-xs font-extrabold text-[#56685f]">{tr(language,"mood")}</p><div className="mt-2 grid grid-cols-3 gap-2">{(["low","okay","great"] as const).map(value=><button key={value} onClick={()=>setCheckIn({mood:value,energy:checkIn?.energy||3})} aria-pressed={checkIn?.mood===value} className={`rounded-xl py-2.5 text-sm font-bold ${checkIn?.mood===value?"bg-[#197c4a] text-white shadow-md":"bg-[#f0f5f2] text-[#53675d]"}`}>{tr(language,value)}</button>)}</div></div><div><p className="text-xs font-extrabold text-[#56685f]">{tr(language,"energy")}</p><div className="mt-2 grid grid-cols-5 gap-2">{[1,2,3,4,5].map(value=><button key={value} onClick={()=>setCheckIn({mood:checkIn?.mood||"okay",energy:value})} aria-label={`${tr(language,"energy")} ${value}/5`} aria-pressed={checkIn?.energy===value} className={`rounded-xl py-2.5 text-sm font-black ${checkIn?.energy===value?"bg-[#197c4a] text-white shadow-md":"bg-[#fff4dc] text-[#9a6129]"}`}>{value}</button>)}</div></div></div>
-      </article>
+      <DailyWeightCard value={currentWeight} save={saveWeight}/>
     </div>
-    <aside className="space-y-4">
-      <article className="rounded-[24px] border border-[#f0dfc9] bg-[#fff8ed] p-5"><div className="flex items-center gap-4"><div className="grid h-14 w-14 place-items-center rounded-2xl bg-white text-[#ee6338]"><Flame size={27}/></div><div><p className="text-xs font-bold text-[#7c7062]">{tr(language,"currentStreak")}</p><p className="text-3xl font-black">{streak} {tr(language,streak===1?"day":"days")}</p></div></div><p className="mt-3 text-sm text-[#776d61]">{tr(language,"startToday")}</p></article>
-      <article className="rounded-[24px] border border-[#e0e9e4] bg-white p-5 shadow-[0_12px_35px_rgba(27,69,50,.05)]"><div className="flex items-center justify-between"><h2 className="text-lg font-extrabold">{tr(language,"todayGlance")}</h2><span className="text-xs font-bold text-[#177147]">{tr(language,"live")}</span></div><div className="mt-4 space-y-4">{[
-        [Utensils,tr(language,"Meals"),`${mealLogged?1:0} ${tr(language,"logged")}`,mealLogged?55:0,()=>go("Meals")],[Flame,tr(language,"Sugar"),`${Math.round(addedSugar)} / ${sugarLimit} g`,Math.min(100,addedSugar/sugarLimit*100),()=>go("Meals")],[Dumbbell,tr(language,"Exercise"),`${activeMinutes} / ${activityTarget} min`,Math.min(100,activeMinutes/activityTarget*100),()=>go("Exercise")],[Droplets,tr(language,"Water"),`${water} / 8 ${tr(language,"glasses")}`,Math.min(100,water/8*100),addWater],
-      ].map(([Icon,label,value,progress,onClick])=><button key={String(label)} onClick={onClick as ()=>void} className="grid w-full grid-cols-[22px_70px_1fr_auto] items-center gap-2 text-left"><Icon size={18} className="text-[#14724a]"/><span className="text-sm font-bold">{String(label)}</span><span className="h-2 overflow-hidden rounded-full bg-[#edf2ef]"><span className="block h-full rounded-full bg-[#45aa76]" style={{width:`${Number(progress)}%`}}/></span><span className="min-w-[58px] text-right text-xs font-bold text-[#51645a]">{String(value)}</span></button>)}</div><div className="mt-5 grid grid-cols-2 gap-2 border-t border-[#edf1ef] pt-4"><button onClick={()=>setCheckIn({mood:checkIn?.mood||"great",energy:checkIn?.energy||4})} className="rounded-xl bg-[#ebf7f0] px-3 py-2.5 text-xs font-extrabold text-[#176044]">{tr(language,"mood")} · {checkIn?tr(language,checkIn.mood):tr(language,"checkIn")}</button><button onClick={()=>go("Progress")} className="rounded-xl bg-[#ebf7f0] px-3 py-2.5 text-xs font-extrabold text-[#176044]">BMI · {bmi.toFixed(1)}</button></div></article>
-      <article className="rounded-[24px] border border-[#dfe8e3] bg-[#f1f8f4] p-5"><div className="flex items-center justify-between"><h2 className="text-base font-extrabold">{tr(language,"thisWeek")}</h2><span className="text-sm font-black text-[#176044]">{weekActivity.filter(Boolean).length}/5 {tr(language,"days")}</span></div><div className="mt-4 grid grid-cols-7 gap-1">{["M","T","W","T","F","S","S"].map((label,index)=><div key={`${label}-${index}`} className={`grid h-8 w-8 place-items-center rounded-full text-xs font-black ${weekActivity[index]?"bg-[#197c4a] text-white":"border border-[#d4e0da] bg-white text-[#7e8b84]"}`}>{weekActivity[index]?<CheckCircle2 size={15}/>:label}</div>)}</div><div className="mt-4 h-2 overflow-hidden rounded-full bg-[#dfe9e4]"><div className="h-full rounded-full bg-[#197c4a]" style={{width:`${Math.min(100,weekActivity.filter(Boolean).length/5*100)}%`}}/></div><p className="mt-3 text-xs leading-5 text-[#66776e]">{tr(language,"fiveDays")}</p></article>
-      <article className="rounded-[24px] border border-[#d7e7df] bg-[#eaf6f0] p-5 text-[#153f2d] shadow-lg shadow-[#153f2d]/5"><div className="flex items-center gap-2 text-[#176044]"><Bot size={18}/><strong>{tr(language,"normalAssistant")}</strong></div><h2 className="mt-3 text-xl font-black leading-tight">{tr(language,"smarterGuidance")}</h2><p className="mt-2 text-xs leading-5 text-[#557166]">{tr(language,"useDailyContext")}</p><button onClick={()=>go("Assistant")} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#176044] px-4 py-3 text-sm font-black text-white">{tr(language,"chatPlus")} <ChevronRight size={16}/></button></article>
-    </aside>
-    </div>
+    <article className="rounded-[22px] border border-[#efd4a4] bg-[#fff8e9] p-5"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div className="flex min-w-0 gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#ffd781] text-[#8a5411]"><Sparkles size={21}/></span><div><p className="text-xs font-black uppercase tracking-[.14em] text-[#9a621d]">AI recommendation</p><h3 className="mt-1 text-lg font-black">{recommendation}</h3><p className="mt-1 text-sm text-[#756448]">{dailyPlan?.summary || "Fit+ uses today’s weight, energy, meals and movement to adapt this suggestion."}</p></div></div><button onClick={generatePlan} disabled={planLoading} className="shrink-0 rounded-xl border border-[#d7b672] bg-white px-4 py-2.5 text-sm font-black text-[#68491e] disabled:opacity-50">{planLoading?"Creating…":dailyPlan?"Refresh plan":"Create my plan"}</button></div>{planError&&<ErrorBox text={planError}/>}</article>
+    <article id="energy-checkin" className="rounded-[22px] border border-[#dce7e1] bg-white p-5"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><h3 className="font-black">How is your energy today?</h3><p className="mt-1 text-xs text-[#6b7a72]">1 is very low and 5 is high.</p></div><div className="grid grid-cols-5 gap-2">{[1,2,3,4,5].map(value=><button key={value} onClick={()=>setCheckIn({energy:value})} aria-pressed={checkIn?.energy===value} className={`h-10 w-10 rounded-xl text-sm font-black ${checkIn?.energy===value?"bg-[#176044] text-white":"bg-[#edf5f1] text-[#176044]"}`}>{value}</button>)}</div></div></article>
+    <article className="grid overflow-hidden rounded-[22px] border border-[#cfe2d8] bg-white sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">{summaries.map(({icon:Icon,label,value,progress},index)=><button key={label} onClick={label==="Water"?addWater:label==="Exercise"?()=>go("Exercise"):label==="Calories"||label==="Energy"||label==="Sugar"?()=>go("Meals"):undefined} className={`p-4 text-left ${index?summaries.length>3?"border-t sm:border-l sm:border-t-0":"border-l":""} border-[#e0e9e4]`}><div className="flex items-center gap-2 text-xs font-black text-[#52665b]"><Icon size={17} className="text-[#177147]"/>{label}</div><p className="mt-2 text-base font-black">{value}</p><span className="mt-2 block h-1.5 overflow-hidden rounded-full bg-[#e7f0eb]"><span className="block h-full rounded-full bg-[#2b9461]" style={{width:`${progress}%`}}/></span></button>)}</article>
   </div>;
 }
 
@@ -1341,8 +1385,8 @@ function Overview({
   dailyScore: number;
   streak: number;
   weekActivity: boolean[];
-  checkIn?: { mood: "low" | "okay" | "great"; energy: number };
-  setCheckIn: (value: { mood: "low" | "okay" | "great"; energy: number }) => void;
+  checkIn?: EnergyCheckIn;
+  setCheckIn: (value: EnergyCheckIn) => void;
   mealLogged: boolean;
   weight: number;
   goalWeight: number;
@@ -1650,6 +1694,9 @@ function Meals({
   addedSugar,
   freeSugar,
   sugarLimit,
+  consumed,
+  calorieGuide,
+  teen,
   language,
   remove,
 }: {
@@ -1671,6 +1718,9 @@ function Meals({
   addedSugar: number;
   freeSugar: number;
   sugarLimit: number;
+  consumed: number;
+  calorieGuide: number;
+  teen: boolean;
   language: Language;
   remove: (id: string) => void;
 }) {
@@ -1678,9 +1728,11 @@ function Meals({
   return (
     <div className="grid w-full min-w-0 gap-5 xl:grid-cols-[minmax(0,.9fr)_minmax(0,1.1fr)]">
       <article className="rounded-[28px] border border-[#dfe7e2] bg-white p-6">
-        <div
-          className={`mb-5 rounded-2xl p-4 ${freeSugar >= sugarLimit ? "bg-red-50" : "bg-[#e3efe8]"}`}
-        >
+        <div className="mb-3 rounded-2xl bg-[#eef6f2] p-4">
+          <div className="flex items-center justify-between gap-4"><div><p className="text-sm font-bold">{teen ? "Today’s energy guide" : "Today’s calorie limit"}</p><p className="mt-1 text-xs text-[#65756c]">{teen ? "A maintenance guide for healthy growth—not a dieting target." : "Based on your profile, activity and goal."}</p></div><p className="text-xl font-extrabold text-[#17412e]">{Math.round(consumed)} / {Math.round(calorieGuide)} <span className="text-xs">kcal</span></p></div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-white"><div className={`h-full rounded-full ${consumed > calorieGuide ? "bg-amber-500" : "bg-[#3c8c67]"}`} style={{width:`${Math.min(100, calorieGuide ? consumed/calorieGuide*100 : 0)}%`}} /></div>
+        </div>
+        <div className={`mb-5 rounded-2xl p-4 ${freeSugar >= sugarLimit ? "bg-red-50" : "bg-[#e3efe8]"}`}>
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-sm font-bold">{tr(language, "sugarToday")}</p>
